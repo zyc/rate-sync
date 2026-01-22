@@ -21,11 +21,11 @@ requires-python = ">=3.12,<4.0"
 version = "0.1.0"
 
 [project.urls]
-Changelog = "https://github.com/rate-sync/rate-sync/blob/main/CHANGELOG.md"
-Documentation = "https://github.com/rate-sync/rate-sync#readme"
-Homepage = "https://github.com/rate-sync/rate-sync"
-Issues = "https://github.com/rate-sync/rate-sync/issues"
-Repository = "https://github.com/rate-sync/rate-sync"
+Changelog = "https://github.com/zyc/rate-sync/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/zyc/rate-sync#readme"
+Homepage = "https://github.com/zyc/rate-sync"
+Issues = "https://github.com/zyc/rate-sync/issues"
+Repository = "https://github.com/zyc/rate-sync"
 
 [tool.poetry]
 packages = [{include = "ratesync", from = "src"}]

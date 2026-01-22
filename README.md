@@ -427,7 +427,7 @@ See [docs/api-reference.md](docs/api-reference.md) for complete API documentatio
 ### Setup
 
 ```bash
-git clone https://github.com/rate-sync/rate-sync.git
+git clone https://github.com/zyc/rate-sync.git
 cd rate-sync
 
 poetry install
@@ -493,8 +493,8 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/rate-sync/rate-sync/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/rate-sync/rate-sync/discussions)
+- **Issues**: [GitHub Issues](https://github.com/zyc/rate-sync/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/zyc/rate-sync/discussions)
 
 ---
 
