@@ -18,7 +18,7 @@ license = {text = "MIT"}
 name = "rate-sync"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
-version = "0.1.0"
+version = "0.1.1"
 
 [project.urls]
 Changelog = "https://github.com/zyc/rate-sync/blob/main/CHANGELOG.md"

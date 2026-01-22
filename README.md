@@ -168,7 +168,7 @@ max_concurrent = 50          # Max parallelism (optional)
 timeout = 30.0               # Wait timeout in seconds
 ```
 
-See [docs/configuration.md](docs/configuration.md) for complete configuration reference.
+See [docs/configuration.md](https://github.com/zyc/rate-sync/blob/main/docs/configuration.md) for complete configuration reference.
 
 ## Algorithms
 
@@ -208,7 +208,7 @@ Zero dependencies, perfect for development:
 engine = "memory"
 ```
 
-[Full documentation](docs/engines/memory.md)
+[Full documentation](https://github.com/zyc/rate-sync/blob/main/docs/engines/memory.md)
 
 ### Redis (Recommended for Production)
 
@@ -220,7 +220,7 @@ engine = "redis"
 url = "redis://localhost:6379/0"
 ```
 
-[Full documentation](docs/engines/redis.md)
+[Full documentation](https://github.com/zyc/rate-sync/blob/main/docs/engines/redis.md)
 
 ### NATS
 
@@ -232,7 +232,7 @@ engine = "nats"
 url = "nats://localhost:4222"
 ```
 
-[Full documentation](docs/engines/nats.md)
+[Full documentation](https://github.com/zyc/rate-sync/blob/main/docs/engines/nats.md)
 
 ### PostgreSQL
 
@@ -244,7 +244,7 @@ engine = "postgres"
 url = "postgresql://user:pass@localhost/db"
 ```
 
-[Full documentation](docs/engines/postgres.md)
+[Full documentation](https://github.com/zyc/rate-sync/blob/main/docs/engines/postgres.md)
 
 ## FastAPI Integration
 
@@ -282,7 +282,7 @@ app.add_middleware(
 )
 ```
 
-See [docs/fastapi-integration.md](docs/fastapi-integration.md) for complete guide.
+See [docs/fastapi-integration.md](https://github.com/zyc/rate-sync/blob/main/docs/fastapi-integration.md) for complete guide.
 
 ## Usage Examples
 
@@ -385,7 +385,7 @@ def export_metrics():
         WAIT_GAUGE.labels(limiter=limiter_id).set(metrics.avg_wait_time_ms)
 ```
 
-See [docs/observability.md](docs/observability.md) for alerting strategies.
+See [docs/observability.md](https://github.com/zyc/rate-sync/blob/main/docs/observability.md) for alerting strategies.
 
 ## API Reference
 
@@ -420,7 +420,7 @@ See [docs/observability.md](docs/observability.md) for alerting strategies.
 | `initialize_limiter(limiter_id)` | Initialize specific limiter |
 | `initialize_all_limiters()` | Initialize all limiters |
 
-See [docs/api-reference.md](docs/api-reference.md) for complete API documentation.
+See [docs/api-reference.md](https://github.com/zyc/rate-sync/blob/main/docs/api-reference.md) for complete API documentation.
 
 ## Development
 
