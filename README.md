@@ -5,9 +5,9 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![PyPI version](https://img.shields.io/pypi/v/rate-sync.svg)](https://pypi.org/project/rate-sync/)
 
-**Zero-configuration distributed rate limiter for Python**
+**File-based distributed rate limiter for Python**
 
-rate-sync provides the simplest possible API for rate limiting in Python applications. Just create a `rate-sync.toml` file and start using it - no initialization code required.
+rate-sync provides a simple, declarative API for rate limiting in Python applications. Define your rate limits in a `rate-sync.toml` file and use them immediately - no initialization code required.
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@ rate-sync provides the simplest possible API for rate limiting in Python applica
 
 ## Features
 
-- **Zero Configuration**: Auto-detects and loads `rate-sync.toml` on import
+- **Auto-Loading Configuration**: Detects and loads `rate-sync.toml` on import
 - **Lazy Initialization**: Limiters auto-initialize on first use
 - **Dual Limiting Strategies**: Rate limiting (req/sec) AND concurrency limiting (max simultaneous)
 - **Multiple Algorithms**: Token bucket for throughput, sliding window for auth protection
@@ -91,7 +91,7 @@ poetry add rate-sync[redis]    # Redis engine
 
 ## Quick Start
 
-### Option 1: Zero-Config with TOML (Recommended)
+### Option 1: File-Based Configuration (Recommended)
 
 **Step 1: Create `rate-sync.toml`**
 

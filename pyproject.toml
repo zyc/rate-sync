@@ -12,13 +12,13 @@ classifiers = [
   "Topic :: System :: Distributed Computing",
   "Typing :: Typed",
 ]
-description = "Distributed rate limiter with coordinated synchronization across services"
+description = "File-based distributed rate limiter with declarative configuration"
 keywords = ["rate-limiting", "distributed-systems", "nats", "asyncio", "rate-limiter", "coordination"]
 license = {text = "MIT"}
 name = "rate-sync"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
-version = "0.1.1"
+version = "0.1.2"
 
 [project.urls]
 Changelog = "https://github.com/zyc/rate-sync/blob/main/CHANGELOG.md"
