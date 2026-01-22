@@ -1,0 +1,58 @@
+# rate-sync.toml - Configuração dos tiers
+
+# ==============================================================================
+# Store (backend de coordenação)
+# ==============================================================================
+
+[stores.redis]
+engine = "redis"
+url = "redis://localhost:6379/0"
+
+# ==============================================================================
+# Tiers (diferentes limites por plano)
+# ==============================================================================
+
+# Free Tier - Para startups/hobby
+[limiters.free-tier]
+store = "redis"
+algorithm = "token_bucket"
+rate_per_second = 0.16      # ~10 requests/minuto
+max_concurrent = 2          # Máximo 2 requests simultâneas
+timeout = 10.0              # Espera até 10s por slot
+
+# Pro Tier - Para empresas pequenas/médias
+[limiters.pro-tier]
+store = "redis"
+algorithm = "token_bucket"
+rate_per_second = 1.66      # ~100 requests/minuto
+max_concurrent = 20         # Máximo 20 requests simultâneas
+timeout = 30.0
+
+# Enterprise Tier - Para grandes empresas
+[limiters.enterprise-tier]
+store = "redis"
+algorithm = "token_bucket"
+rate_per_second = 16.66     # ~1000 requests/minuto
+max_concurrent = 200        # Máximo 200 requests simultâneas
+timeout = 60.0
+
+# ==============================================================================
+# COMO FUNCIONA:
+# ==============================================================================
+#
+# 1. Cliente envia request com header X-Tenant-ID: tenant-acme
+# 2. Código Python faz lookup: tier = get_tenant_tier("tenant-acme") → "free-tier"
+# 3. rate-sync carrega config do limiter "free-tier" deste arquivo
+# 4. Aplica rate_per_second=0.16 E max_concurrent=2
+# 5. Se exceder qualquer limite → HTTP 429
+#
+# ==============================================================================
+# VANTAGENS vs limits:
+# ==============================================================================
+#
+# ✅ Config declarativa (auditable, versionada no git)
+# ✅ Mudar limites = edit TOML + reload (sem deploy)
+# ✅ Rate + Concurrency (limits só faz rate)
+# ✅ Metrics built-in (para billing)
+# ✅ Zero boilerplate no código Python
+#

@@ -1,0 +1,49 @@
+# Test configuration for rate limiter
+# Demonstrates environment variable usage in values and section keys
+
+[stores.local_memory]
+engine = "memory"
+
+[stores.test_nats]
+engine = "nats"
+url = "${NATS_URL:-nats://localhost:4222}"
+bucket_name = "test_rate_limits"
+
+[limiters.api_payments]
+store = "local_memory"
+rate_per_second = 1.0
+timeout = 30.0
+
+[limiters.api_users]
+store = "local_memory"
+rate_per_second = 2.0
+timeout = 10.0
+
+[limiters.api_search]
+store = "local_memory"
+rate_per_second = 5.0
+
+# Concurrency limiting only (no rate limit)
+[limiters.db_connections]
+store = "local_memory"
+max_concurrent = 10  # Max 10 simultaneous DB operations
+
+# Combined: rate + concurrency limiting (recommended for production)
+[limiters.external_api]
+store = "local_memory"
+rate_per_second = 10.0   # Max 10 requests/second
+max_concurrent = 5       # Max 5 concurrent requests
+timeout = 30.0
+
+# Fail-fast exclusive access (returns 429 immediately if busy)
+[limiters.exclusive_task]
+store = "local_memory"
+max_concurrent = 1       # Only one can run at a time
+timeout = 0.0            # Fail immediately if another is running
+
+# Example of environment variables in section keys
+# Allows creating dynamic limiters based on environment configuration
+[limiters."${DYNAMIC_LIMITER_ID:-api_dynamic}"]
+store = "local_memory"
+rate_per_second = "${DYNAMIC_RATE:-3.0}"
+timeout = 15.0

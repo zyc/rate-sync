@@ -1,0 +1,37 @@
+{
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": true,
+
+  "files.exclude": {
+    "**/*.рус": { "when": "$(basename).py" },
+    "**/__pycache__": true,
+    "**/.pytest_cache": true
+  },
+
+  // Configurações de teste - pytest
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.nosetestsEnabled": false,
+  "python.testing.pytestArgs": ["./tests", "-v", "--tb=short"],
+  "python.testing.cwd": "${workspaceFolder}",
+  "python.testing.autoTestDiscoverOnSaveEnabled": true,
+
+  // Configurações do interpretador Python
+  "python.defaultInterpreterPath": "./.venv/bin/python",
+
+  // Configurações de debug
+  "python.testing.debugPort": 3000,
+
+  // Configurações de análise
+  // "python.analysis.typeCheckingMode": "strict",
+
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  }
+}

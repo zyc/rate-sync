@@ -1,0 +1,44 @@
+# NOTE: This workflow is specific to the Automacity internal ecosystem
+# It synchronizes the main branch to prod and triggers dependent repositories
+# For standalone open-source use, this workflow can be removed or customized
+
+name: Sync to Prod Branch
+run-name: "ci(sync): ${{ github.event.head_commit.message }}"
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  sync-prod:
+    runs-on: self-hosted
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync main to prod
+        run: |
+          # rate-limiter não tem dependências de outras libs compartilhadas
+          # então apenas sincroniza main -> prod diretamente
+          git push origin HEAD:prod --force
+
+      - name: Trigger dependent repos
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.REPO_DISPATCH_TOKEN }}
+        run: |
+          # rate-limiter é dependência de shared-siconfi
+          echo "Triggering shared-siconfi..."
+          curl -sS -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/automacity/shared-siconfi/dispatches \
+            -d '{"event_type":"dependency_updated","client_payload":{"source":"rate-limiter"}}'
