@@ -1,76 +1,76 @@
 # Claude Code Configuration
 
-Este diretório contém configurações e instruções para agentes de IA que trabalham neste projeto.
+This directory contains configurations and instructions for AI agents working on this project.
 
-## Estrutura
+## Structure
 
 ```
 .claude/
-├── CLAUDE.md           # Instruções principais para agentes de IA
-├── README.md           # Este arquivo
-├── credentials.md      # Credenciais do projeto (não commitado)
-├── agents/             # Agentes especializados
+├── CLAUDE.md           # Main instructions for AI agents
+├── README.md           # This file
+├── credentials.md      # Project credentials (not committed)
+├── agents/             # Specialized agents
 │   ├── code-reviewer.md
 │   ├── python-developer.md
 │   ├── test-engineer.md
 │   └── troubleshooter.md
-└── commands/           # Comandos customizados
-    └── padroes-codigo.md
+└── commands/           # Custom commands
+    └── code-standards.md
 ```
 
 ## CLAUDE.md
 
-Documento principal com:
-- Visão geral do projeto
-- Padrões de código
-- Estrutura do projeto
-- Guia de desenvolvimento
+Main document with:
+- Project overview
+- Code standards
+- Project structure
+- Development guide
 - CI/CD
 - Troubleshooting
 
-## Agentes
+## Agents
 
-Agentes especializados que podem ser invocados para tarefas específicas:
+Specialized agents that can be invoked for specific tasks:
 
-- **code-reviewer**: Revisão de código e qualidade
-- **python-developer**: Desenvolvimento Python
-- **test-engineer**: Testes e cobertura
-- **troubleshooter**: Debug e resolução de problemas
+- **code-reviewer**: Code review and quality
+- **python-developer**: Python development
+- **test-engineer**: Tests and coverage
+- **troubleshooter**: Debug and problem resolution
 
-## Comandos
+## Commands
 
-Comandos customizados para tarefas comuns:
+Custom commands for common tasks:
 
-- **padroes-codigo**: Aplicar padrões de código do projeto
+- **code-standards**: Apply project code standards
 
-## Credenciais
+## Credentials
 
-O arquivo `credentials.md` contém tokens e credenciais necessárias para:
+The `credentials.md` file contains tokens and credentials needed for:
 
-- **PyPI**: Publicação de pacotes
-- **GitHub**: Criação de releases e operações via API
-- **GitHub Actions**: Secrets para workflows
+- **PyPI**: Package publishing
+- **GitHub**: Release creation and API operations
+- **GitHub Actions**: Secrets for workflows
 
-⚠️ **IMPORTANTE**: Este arquivo está no `.gitignore` e nunca deve ser commitado.
+⚠️ **IMPORTANT**: This file is in `.gitignore` and should never be committed.
 
-### Para Maintainers
+### For Maintainers
 
-Se você tem acesso de manutenção ao projeto:
+If you have maintenance access to the project:
 
-1. Leia `credentials.md` para ver os tokens
-2. Configure os tokens localmente conforme instruções
-3. Mantenha backup seguro dos tokens
-4. Nunca compartilhe os tokens publicamente
+1. Read `credentials.md` to see the tokens
+2. Configure tokens locally as instructed
+3. Keep secure backup of the tokens
+4. Never share tokens publicly
 
-## Para Colaboradores
+## For Contributors
 
-Se você está usando Claude Code ou outra ferramenta de IA para contribuir com este projeto:
+If you're using Claude Code or another AI tool to contribute to this project:
 
-1. Leia `CLAUDE.md` primeiro
-2. Use os agentes especializados quando apropriado
-3. Siga os padrões de código descritos
-4. Execute os testes antes de abrir PRs
+1. Read `CLAUDE.md` first
+2. Use specialized agents when appropriate
+3. Follow the described code standards
+4. Run tests before opening PRs
 
-## Nota
+## Note
 
-Estes arquivos são específicos para ferramentas de IA e não afetam o funcionamento do código ou da biblioteca.
+These files are specific to AI tools and do not affect the code or library functionality.
