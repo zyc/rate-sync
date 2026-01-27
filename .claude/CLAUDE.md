@@ -22,8 +22,8 @@ Published as **rate-sync** on PyPI. Supports multiple backends: Redis, PostgreSQ
 ## Important Links
 
 - **PyPI**: https://pypi.org/project/rate-sync/
-- **GitHub**: https://github.com/zyc/rate-sync
-- **Issues**: https://github.com/zyc/rate-sync/issues
+- **GitHub**: https://github.com/rate-sync/rate-sync
+- **Issues**: https://github.com/rate-sync/rate-sync/issues
 
 ## Python Dependency Management
 
@@ -148,7 +148,7 @@ poetry run pytest --cov=ratesync --cov-report=term
 The project uses GitHub Actions for CI/CD:
 
 - **test.yml**: Runs tests on Python 3.12 and 3.13
-- **publish.yml**: Publishes to PyPI on releases
+- **publish.yml**: Publishes to PyPI when a `v*` tag is pushed
 
 ### Release Flow
 
@@ -157,14 +157,17 @@ The project uses GitHub Actions for CI/CD:
 3. Commit: `git commit -m "chore: bump version to X.Y.Z"`
 4. Tag: `git tag -a vX.Y.Z -m "Release X.Y.Z"`
 5. Push: `git push && git push --tags`
-6. Create release on GitHub (triggers PyPI publication)
+
+**The tag push triggers the full pipeline automatically:** test → build → publish to PyPI → create GitHub Release. No manual release creation needed.
+
+**Important:** The `gh` CLI PAT does not have release creation permissions, but that's fine — the CI/CD pipeline creates the GitHub Release as part of the publish job. Do NOT waste time trying to create releases via `gh release create`.
 
 ## Development
 
 ### Initial Setup
 
 ```bash
-git clone https://github.com/zyc/rate-sync.git
+git clone https://github.com/rate-sync/rate-sync.git
 cd rate-sync
 poetry install
 poetry run pytest

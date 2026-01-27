@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/zyc/rate-sync/main/docs/assets/logo.png" alt="rate-sync" width="200">
+  <img src="https://raw.githubusercontent.com/rate-sync/rate-sync/main/docs/assets/logo.png" alt="rate-sync" width="200">
 </p>
 
 <h1 align="center">rate-sync</h1>
@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/rate-sync/"><img src="https://img.shields.io/pypi/v/rate-sync.svg" alt="PyPI version"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
-  <a href="https://github.com/zyc/rate-sync/actions"><img src="https://img.shields.io/github/actions/workflow/status/zyc/rate-sync/test.yml?branch=main&label=tests" alt="Tests"></a>
+  <a href="https://github.com/rate-sync/rate-sync/actions"><img src="https://img.shields.io/github/actions/workflow/status/rate-sync/rate-sync/test.yml?branch=main&label=tests" alt="Tests"></a>
 </p>
 
 <p align="center">Distributed rate limiting for Python with Redis, PostgreSQL, or in-memory backends.</p>
@@ -28,7 +28,7 @@ limit = 5                # 5 attempts
 window_seconds = 300     # per 5 minutes
 ```
 
-> **Deep dive:** [Authentication Protection](https://github.com/zyc/rate-sync/blob/main/docs/patterns/authentication-protection.md) &middot; [Abuse Prevention](https://github.com/zyc/rate-sync/blob/main/docs/patterns/abuse-prevention.md)
+> **Deep dive:** [Authentication Protection](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/authentication-protection.md) &middot; [Abuse Prevention](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/abuse-prevention.md)
 
 ### Different API quotas for free, pro, and enterprise customers
 
@@ -38,7 +38,7 @@ Your free tier gets 100 requests/hour. Pro gets 1,000. Enterprise gets 10,000. D
 limiter = await get_or_clone_limiter(f"api_{tier}", api_key)
 ```
 
-> **Deep dive:** [API Tiering](https://github.com/zyc/rate-sync/blob/main/docs/patterns/api-tiering.md)
+> **Deep dive:** [API Tiering](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/api-tiering.md)
 
 ### Background workers overwhelming third-party APIs
 
@@ -51,7 +51,7 @@ rate_per_second = 90.0   # stay under Stripe's 100/s limit
 max_concurrent = 10       # max 10 in-flight calls
 ```
 
-> **Deep dive:** [Background Jobs](https://github.com/zyc/rate-sync/blob/main/docs/patterns/background-jobs.md)
+> **Deep dive:** [Background Jobs](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/background-jobs.md)
 
 ### Rate limits that actually work across multiple servers
 
@@ -67,7 +67,7 @@ store = "redis"          # all instances share this
 rate_per_second = 100.0
 ```
 
-> **Deep dive:** [Production Deployment](https://github.com/zyc/rate-sync/blob/main/docs/patterns/production-deployment.md)
+> **Deep dive:** [Production Deployment](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/production-deployment.md)
 
 ### Knowing what's being blocked and why
 
@@ -78,7 +78,7 @@ state = await limiter.get_state()
 # → RateLimiterState(allowed=True, remaining=42, reset_at=1706367600)
 ```
 
-> **Deep dive:** [Observability](https://github.com/zyc/rate-sync/blob/main/docs/observability.md) &middot; [Monitoring Patterns](https://github.com/zyc/rate-sync/blob/main/docs/patterns/monitoring.md)
+> **Deep dive:** [Observability](https://github.com/rate-sync/rate-sync/blob/main/docs/observability.md) &middot; [Monitoring Patterns](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/monitoring.md)
 
 ---
 
@@ -237,33 +237,33 @@ await acquire("api")
 
 | Topic | Link |
 |-------|------|
-| Configuration Reference | [docs/configuration.md](https://github.com/zyc/rate-sync/blob/main/docs/configuration.md) |
-| API Reference | [docs/api-reference.md](https://github.com/zyc/rate-sync/blob/main/docs/api-reference.md) |
-| FastAPI Integration | [docs/fastapi-integration.md](https://github.com/zyc/rate-sync/blob/main/docs/fastapi-integration.md) |
-| Redis Setup | [docs/setup/redis-setup.md](https://github.com/zyc/rate-sync/blob/main/docs/setup/redis-setup.md) |
-| PostgreSQL Setup | [docs/setup/postgres-setup.md](https://github.com/zyc/rate-sync/blob/main/docs/setup/postgres-setup.md) |
-| Observability | [docs/observability.md](https://github.com/zyc/rate-sync/blob/main/docs/observability.md) |
+| Configuration Reference | [docs/configuration.md](https://github.com/rate-sync/rate-sync/blob/main/docs/configuration.md) |
+| API Reference | [docs/api-reference.md](https://github.com/rate-sync/rate-sync/blob/main/docs/api-reference.md) |
+| FastAPI Integration | [docs/fastapi-integration.md](https://github.com/rate-sync/rate-sync/blob/main/docs/fastapi-integration.md) |
+| Redis Setup | [docs/setup/redis-setup.md](https://github.com/rate-sync/rate-sync/blob/main/docs/setup/redis-setup.md) |
+| PostgreSQL Setup | [docs/setup/postgres-setup.md](https://github.com/rate-sync/rate-sync/blob/main/docs/setup/postgres-setup.md) |
+| Observability | [docs/observability.md](https://github.com/rate-sync/rate-sync/blob/main/docs/observability.md) |
 
 ### Patterns
 
-- [Authentication Protection](https://github.com/zyc/rate-sync/blob/main/docs/patterns/authentication-protection.md)
-- [Abuse Prevention](https://github.com/zyc/rate-sync/blob/main/docs/patterns/abuse-prevention.md)
-- [API Tiering](https://github.com/zyc/rate-sync/blob/main/docs/patterns/api-tiering.md)
-- [Background Jobs](https://github.com/zyc/rate-sync/blob/main/docs/patterns/background-jobs.md)
-- [Monitoring](https://github.com/zyc/rate-sync/blob/main/docs/patterns/monitoring.md)
-- [Testing](https://github.com/zyc/rate-sync/blob/main/docs/patterns/testing.md)
-- [Production Deployment](https://github.com/zyc/rate-sync/blob/main/docs/patterns/production-deployment.md)
+- [Authentication Protection](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/authentication-protection.md)
+- [Abuse Prevention](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/abuse-prevention.md)
+- [API Tiering](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/api-tiering.md)
+- [Background Jobs](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/background-jobs.md)
+- [Monitoring](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/monitoring.md)
+- [Testing](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/testing.md)
+- [Production Deployment](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/production-deployment.md)
 
 ## Contributing
 
 ```bash
-git clone https://github.com/zyc/rate-sync.git
+git clone https://github.com/rate-sync/rate-sync.git
 cd rate-sync
 poetry install
 poetry run pytest
 ```
 
-See [CONTRIBUTING.md](https://github.com/zyc/rate-sync/blob/main/CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](https://github.com/rate-sync/rate-sync/blob/main/CONTRIBUTING.md) for guidelines.
 
 ## License
 

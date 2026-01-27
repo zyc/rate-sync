@@ -123,5 +123,5 @@ window_seconds = 300  # 5 attempts per 5 min
 
 ## Support
 
-- [GitHub Issues](https://github.com/zyc/rate-sync/issues)
-- [GitHub Discussions](https://github.com/zyc/rate-sync/discussions)
+- [GitHub Issues](https://github.com/rate-sync/rate-sync/issues)
+- [GitHub Discussions](https://github.com/rate-sync/rate-sync/discussions)

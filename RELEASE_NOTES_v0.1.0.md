@@ -46,9 +46,9 @@ await acquire("api")
 
 ## Documentation
 
-- [README](https://github.com/zyc/rate-sync#readme)
-- [Configuration Guide](https://github.com/zyc/rate-sync/blob/main/docs/configuration.md)
-- [FastAPI Integration](https://github.com/zyc/rate-sync/blob/main/docs/fastapi-integration.md)
+- [README](https://github.com/rate-sync/rate-sync#readme)
+- [Configuration Guide](https://github.com/rate-sync/rate-sync/blob/main/docs/configuration.md)
+- [FastAPI Integration](https://github.com/rate-sync/rate-sync/blob/main/docs/fastapi-integration.md)
 
 ## PyPI
 
@@ -56,4 +56,4 @@ https://pypi.org/project/rate-sync/
 
 ---
 
-**Full Changelog**: https://github.com/zyc/rate-sync/commits/v0.1.0
+**Full Changelog**: https://github.com/rate-sync/rate-sync/commits/v0.1.0
