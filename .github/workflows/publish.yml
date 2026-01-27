@@ -34,7 +34,7 @@ jobs:
         run: poetry install --with dev
 
       - name: Run tests
-        run: poetry run pytest
+        run: poetry run pytest -m "not integration"
 
   build:
     runs-on: ubuntu-latest

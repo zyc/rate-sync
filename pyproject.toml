@@ -12,7 +12,7 @@ classifiers = [
   "Topic :: System :: Distributed Computing",
   "Typing :: Typed",
 ]
-description = "File-based distributed rate limiter with declarative configuration"
+description = "Simple, robust distributed rate limiter for Python — Redis, PostgreSQL, or in-memory"
 keywords = ["rate-limiting", "distributed-systems", "asyncio", "rate-limiter", "coordination"]
 license = {text = "MIT"}
 name = "rate-sync"
