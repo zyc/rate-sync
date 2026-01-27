@@ -2,21 +2,7 @@
 
 Complete API documentation for rate-sync.
 
-## Table of Contents
-
-- [Configuration Functions](#configuration-functions)
-- [Usage Functions](#usage-functions)
-- [Inspection Functions](#inspection-functions)
-- [Initialization Functions](#initialization-functions)
-- [Decorators](#decorators)
-- [Classes](#classes)
-- [Dataclasses](#dataclasses)
-- [Exceptions](#exceptions)
-- [FastAPI Integration](#fastapi-integration)
-
----
-
-## Configuration Functions
+## Configuration
 
 ### configure_store
 
@@ -26,44 +12,46 @@ Configure a coordination store.
 def configure_store(store_id: str, strategy: str, **kwargs) -> None
 ```
 
-**Parameters:**
-
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `store_id` | str | Unique identifier for the store |
-| `strategy` | str | Engine type: `"memory"`, `"redis"`, `"postgres"` |
-| `**kwargs` | Any | Engine-specific configuration options |
+| `store_id` | `str` | Unique identifier |
+| `strategy` | `str` | `"memory"`, `"redis"`, or `"postgres"` |
+| `**kwargs` | | Engine-specific options (see below) |
 
-**Engine-specific kwargs:**
+**Redis options:**
 
-| Engine | Required | Optional |
-|--------|----------|----------|
-| `memory` | - | - |
-| `redis` | `url` | `db`, `password`, `key_prefix`, `pool_min_size`, `pool_max_size`, `timing_margin_ms`, `socket_timeout`, `socket_connect_timeout` |
-| `postgres` | `url` | `table_name`, `schema_name`, `auto_create`, `pool_min_size`, `pool_max_size`, `timing_margin_ms` |
+| Option | Type | Default |
+|--------|------|---------|
+| `url` | `str` | Required |
+| `db` | `int` | `0` |
+| `password` | `str \| None` | `None` |
+| `key_prefix` | `str` | `"rate_limit"` |
+| `pool_min_size` | `int` | `2` |
+| `pool_max_size` | `int` | `10` |
+| `socket_timeout` | `float` | `5.0` |
+| `socket_connect_timeout` | `float` | `5.0` |
 
-**Example:**
+**PostgreSQL options:**
+
+| Option | Type | Default |
+|--------|------|---------|
+| `url` | `str` | Required |
+| `table_name` | `str` | `"rate_limiter_state"` |
+| `schema_name` | `str` | `"public"` |
+| `auto_create` | `bool` | `False` |
+| `pool_min_size` | `int` | `2` |
+| `pool_max_size` | `int` | `10` |
 
 ```python
 from ratesync import configure_store
 
-# Memory store
 configure_store("dev", strategy="memory")
 
-# Redis store
 configure_store(
     "prod",
     strategy="redis",
     url="redis://localhost:6379/0",
     pool_max_size=20,
-)
-
-# PostgreSQL store
-configure_store(
-    "db",
-    strategy="postgres",
-    url="postgresql://user:pass@localhost/db",
-    auto_create=True,
 )
 ```
 
@@ -83,50 +71,34 @@ def configure_limiter(
     algorithm: str = "token_bucket",
     limit: int | None = None,
     window_seconds: int | None = None,
+    fail_closed: bool = False,
 ) -> None
 ```
 
-**Parameters:**
-
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `limiter_id` | str | Required | Unique identifier for the limiter |
-| `store_id` | str | Required | ID of store to use |
-| `rate_per_second` | float | None | Max operations per second (token_bucket) |
-| `max_concurrent` | int | None | Max simultaneous operations (token_bucket) |
-| `timeout` | float | None | Default timeout in seconds |
-| `algorithm` | str | `"token_bucket"` | Algorithm: `"token_bucket"` or `"sliding_window"` |
-| `limit` | int | None | Max requests in window (sliding_window) |
-| `window_seconds` | int | None | Window size in seconds (sliding_window) |
+| `limiter_id` | `str` | Required | Unique identifier |
+| `store_id` | `str` | Required | Store to use |
+| `rate_per_second` | `float \| None` | `None` | Max ops/sec (token_bucket) |
+| `max_concurrent` | `int \| None` | `None` | Max simultaneous ops (token_bucket) |
+| `timeout` | `float \| None` | `None` | Default timeout (seconds) |
+| `algorithm` | `str` | `"token_bucket"` | `"token_bucket"` or `"sliding_window"` |
+| `limit` | `int \| None` | `None` | Max requests (sliding_window) |
+| `window_seconds` | `int \| None` | `None` | Window size (sliding_window) |
+| `fail_closed` | `bool` | `False` | Block on backend failure |
 
-**Raises:**
-- `StoreNotFoundError`: If `store_id` doesn't exist
-- `ValueError`: If configuration is invalid for the algorithm
-
-**Example:**
+**Raises:** `StoreNotFoundError`, `ValueError`
 
 ```python
 from ratesync import configure_limiter
 
-# Token bucket with rate limiting only
-configure_limiter("api", store_id="prod", rate_per_second=10.0)
+# Token bucket
+configure_limiter("api", store_id="prod", rate_per_second=100.0, max_concurrent=50)
 
-# Token bucket with concurrency limiting only
-configure_limiter("db_pool", store_id="prod", max_concurrent=20)
-
-# Token bucket with both (recommended)
-configure_limiter(
-    "external_api",
-    store_id="prod",
-    rate_per_second=100.0,
-    max_concurrent=50,
-    timeout=30.0,
-)
-
-# Sliding window for auth protection
+# Sliding window
 configure_limiter(
     "login",
-    store_id="redis",
+    store_id="prod",
     algorithm="sliding_window",
     limit=5,
     window_seconds=300,
@@ -137,7 +109,7 @@ configure_limiter(
 
 ### clone_limiter
 
-Clone configuration from an existing limiter.
+Clone an existing limiter with optional overrides.
 
 ```python
 def clone_limiter(
@@ -152,231 +124,66 @@ def clone_limiter(
 ) -> None
 ```
 
-**Parameters:**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `source_id` | str | Required | ID of limiter to clone from |
-| `new_id` | str | Required | ID for the new limiter |
-| `rate_per_second` | float | None | Override rate (uses source's if None) |
-| `max_concurrent` | int | None | Override max concurrent |
-| `timeout` | float | None | Override timeout |
-| `limit` | int | None | Override limit (sliding_window) |
-| `window_seconds` | int | None | Override window (sliding_window) |
-
-**Raises:**
-- `LimiterNotFoundError`: If `source_id` doesn't exist
-- `ValueError`: If `new_id` already exists
-
-**Example:**
+**Raises:** `LimiterNotFoundError`, `ValueError`
 
 ```python
 from ratesync import clone_limiter
 
-# Clone with same config
 clone_limiter("api", "api:user123")
-
-# Clone with modified rate
-clone_limiter("api", "api:premium", rate_per_second=100.0)
+clone_limiter("api", "api:premium", rate_per_second=500.0)
 ```
 
 ---
 
 ### load_config
 
-Load configuration from a TOML file.
+Load configuration from TOML file.
 
 ```python
 def load_config(path: str) -> None
 ```
 
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `path` | str | Path to TOML configuration file |
-
-**Example:**
-
 ```python
 from ratesync import load_config
 
-load_config("/path/to/custom-config.toml")
+load_config("/path/to/config.toml")
 ```
 
 ---
 
-## Usage Functions
+## Usage
 
 ### acquire
 
-Acquire a rate limit slot.
+Acquire a rate limit slot. Works as both awaitable and context manager.
 
 ```python
 def acquire(limiter_id: str, timeout: float | None = None) -> AcquireContext
 ```
 
-Can be used as both an awaitable and a context manager.
-
-**Parameters:**
-
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `limiter_id` | str | Required | ID of the limiter |
-| `timeout` | float | None | Timeout override (uses limiter's default if None) |
+| `limiter_id` | `str` | Required | Limiter to use |
+| `timeout` | `float \| None` | `None` | Timeout override |
 
-**Returns:** `AcquireContext` - Can be awaited or used as async context manager.
-
-**Raises:**
-- `LimiterNotFoundError`: If limiter doesn't exist
-- `RateLimiterAcquisitionError`: If timeout exceeded
-
-**Example:**
+**Raises:** `LimiterNotFoundError`, `RateLimiterAcquisitionError`
 
 ```python
 from ratesync import acquire
 
-# As awaitable (simple acquire)
+# As awaitable
 await acquire("api")
-
-# With timeout override
-await acquire("api", timeout=5.0)
 
 # As context manager (recommended for concurrency limiting)
 async with acquire("api"):
-    response = await http_client.get(url)
-    # Concurrency slot auto-released on exit
+    response = await client.get(url)
+    # Slot auto-released on exit
+
+# With timeout
+await acquire("api", timeout=5.0)
 ```
 
 ---
-
-## Inspection Functions
-
-### get_limiter
-
-Get a rate limiter instance.
-
-```python
-def get_limiter(limiter_id: str) -> RateLimiter
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `limiter_id` | str | ID of the limiter |
-
-**Returns:** `RateLimiter` instance (may not be initialized yet).
-
-**Raises:**
-- `LimiterNotFoundError`: If limiter doesn't exist
-
-**Example:**
-
-```python
-from ratesync import get_limiter
-
-limiter = get_limiter("api")
-metrics = limiter.get_metrics()
-print(f"Avg wait: {metrics.avg_wait_time_ms}ms")
-```
-
----
-
-### list_stores
-
-List all configured stores.
-
-```python
-def list_stores() -> dict[str, dict[str, Any]]
-```
-
-**Returns:** Dictionary mapping store IDs to store information.
-
-**Example:**
-
-```python
-from ratesync import list_stores
-
-stores = list_stores()
-# {'prod': {'engine': 'redis', 'url': 'redis://...', 'initialized': True}}
-```
-
----
-
-### list_limiters
-
-List all configured limiters.
-
-```python
-def list_limiters() -> dict[str, dict[str, Any]]
-```
-
-**Returns:** Dictionary mapping limiter IDs to limiter information.
-
-**Example:**
-
-```python
-from ratesync import list_limiters
-
-limiters = list_limiters()
-# {'api': {'backend': 'prod', 'rate_per_second': 10.0, 'initialized': True}}
-```
-
----
-
-## Initialization Functions
-
-### initialize_limiter
-
-Initialize a specific limiter.
-
-```python
-async def initialize_limiter(limiter_id: str) -> None
-```
-
-**Note:** Initialization is automatic on first use. Call explicitly for fail-fast behavior on startup.
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `limiter_id` | str | ID of the limiter to initialize |
-
-**Raises:**
-- `LimiterNotFoundError`: If limiter doesn't exist
-
-**Example:**
-
-```python
-from ratesync import initialize_limiter
-
-# Initialize on startup for fail-fast
-await initialize_limiter("api")
-```
-
----
-
-### initialize_all_limiters
-
-Initialize all configured limiters.
-
-```python
-async def initialize_all_limiters() -> None
-```
-
-**Example:**
-
-```python
-from ratesync import initialize_all_limiters
-
-# Initialize all limiters on startup
-await initialize_all_limiters()
-```
-
----
-
-## Decorators
 
 ### rate_limited
 
@@ -389,33 +196,95 @@ def rate_limited(
 ) -> Callable
 ```
 
-**Parameters:**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `limiter_id` | str or Callable | Required | Limiter ID or callable returning ID |
-| `timeout` | float | None | Timeout override |
-
-**Example:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limiter_id` | `str` or `Callable` | Static ID or callable returning ID |
+| `timeout` | `float \| None` | Timeout override |
 
 ```python
 from ratesync import rate_limited
 
-# Static limiter ID
 @rate_limited("api")
-async def fetch_data():
-    return await http_client.get(url)
+async def fetch_data() -> dict:
+    return await client.get(url)
 
-# With timeout
 @rate_limited("api", timeout=5.0)
-async def fetch_fast():
-    return await http_client.get(url)
+async def fetch_fast() -> dict:
+    return await client.get(url)
 
-# Dynamic limiter ID (for multi-tenant)
-@rate_limited(lambda tenant_id: f"tenant-{tenant_id}")
-async def process_request(tenant_id: str, data: dict):
-    return await process(data)
+# Dynamic limiter ID
+@rate_limited(lambda tenant_id: f"tenant:{tenant_id}")
+async def process(tenant_id: str, data: dict) -> dict:
+    return await handle(data)
 ```
+
+---
+
+## Inspection
+
+### get_limiter
+
+Get a limiter instance for metrics or state inspection.
+
+```python
+def get_limiter(limiter_id: str) -> RateLimiter
+```
+
+**Raises:** `LimiterNotFoundError`
+
+```python
+from ratesync import get_limiter
+
+limiter = get_limiter("api")
+metrics = limiter.get_metrics()
+config = limiter.get_config()
+```
+
+---
+
+### list_stores / list_limiters
+
+List all configured stores or limiters.
+
+```python
+def list_stores() -> dict[str, dict[str, Any]]
+def list_limiters() -> dict[str, dict[str, Any]]
+```
+
+```python
+from ratesync import list_stores, list_limiters
+
+stores = list_stores()
+# {"prod": {"engine": "redis", "initialized": True}}
+
+limiters = list_limiters()
+# {"api": {"store": "prod", "rate_per_second": 100.0}}
+```
+
+---
+
+## Initialization
+
+### initialize_limiter / initialize_all_limiters
+
+Initialize limiters explicitly. Useful for fail-fast on startup.
+
+```python
+async def initialize_limiter(limiter_id: str) -> None
+async def initialize_all_limiters() -> None
+```
+
+```python
+from ratesync import initialize_limiter, initialize_all_limiters
+
+# Single limiter
+await initialize_limiter("api")
+
+# All configured limiters
+await initialize_all_limiters()
+```
+
+Note: Initialization is automatic on first use. Explicit initialization catches connection errors early.
 
 ---
 
@@ -425,235 +294,109 @@ async def process_request(tenant_id: str, data: dict):
 
 Abstract base class for rate limiter implementations.
 
-```python
-class RateLimiter(ABC):
-    async def initialize(self) -> None
-    async def acquire(self) -> None
-    async def try_acquire(self, timeout: float = 0) -> bool
-    async def release(self) -> None
-    def get_metrics(self) -> RateLimiterMetrics
-
-    @property
-    def group_id(self) -> str
-    @property
-    def rate_per_second(self) -> float | None
-    @property
-    def max_concurrent(self) -> int | None
-    @property
-    def is_initialized(self) -> bool
-    @property
-    def default_timeout(self) -> float | None
-    @property
-    def fail_closed(self) -> bool
-
-    async def acquire_context(self, timeout: float | None = None) -> AsyncIterator[None]
-```
-
 **Methods:**
 
 | Method | Description |
 |--------|-------------|
-| `initialize()` | Initialize the limiter (idempotent) |
-| `acquire()` | Wait for rate limit slot (blocking) |
-| `try_acquire(timeout)` | Try to acquire slot within timeout |
+| `initialize()` | Initialize (idempotent) |
+| `acquire()` | Wait for slot (blocking) |
+| `try_acquire(timeout)` | Try to acquire within timeout |
 | `release()` | Release concurrency slot |
-| `get_metrics()` | Get current metrics |
+| `get_metrics()` | Get metrics snapshot |
+| `get_config()` | Get configuration |
+| `get_state()` | Get current state (if supported) |
 | `acquire_context(timeout)` | Context manager with auto-release |
 
 **Properties:**
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `group_id` | str | Identifier for distributed coordination |
-| `rate_per_second` | float or None | Rate limit (None = unlimited) |
-| `max_concurrent` | int or None | Concurrency limit (None = unlimited) |
-| `is_initialized` | bool | Whether limiter is initialized |
-| `default_timeout` | float or None | Default timeout in seconds |
-| `fail_closed` | bool | Behavior on backend failure |
+| `group_id` | `str` | Coordination identifier |
+| `rate_per_second` | `float \| None` | Rate limit |
+| `max_concurrent` | `int \| None` | Concurrency limit |
+| `is_initialized` | `bool` | Initialization status |
+| `default_timeout` | `float \| None` | Default timeout |
+| `fail_closed` | `bool` | Backend failure behavior |
 
 ---
-
-### AcquireContext
-
-Helper class for `acquire()` that works as both awaitable and context manager.
-
-```python
-class AcquireContext:
-    def __init__(self, limiter_id: str, timeout: float | None = None)
-    def __await__(self)
-    async def __aenter__(self) -> None
-    async def __aexit__(self, exc_type, exc_val, exc_tb)
-```
-
----
-
-## Dataclasses
 
 ### RateLimiterMetrics
 
-Observability metrics for a rate limiter.
-
-```python
-@dataclass
-class RateLimiterMetrics:
-    total_acquisitions: int = 0
-    total_wait_time_ms: float = 0.0
-    avg_wait_time_ms: float = 0.0
-    max_wait_time_ms: float = 0.0
-    cas_failures: int = 0
-    timeouts: int = 0
-    last_acquisition_at: float | None = None
-    current_concurrent: int = 0
-    max_concurrent_reached: int = 0
-    total_releases: int = 0
-```
-
-**Fields:**
+Observability metrics dataclass.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `total_acquisitions` | int | Total slots acquired |
-| `total_wait_time_ms` | float | Total accumulated wait time |
-| `avg_wait_time_ms` | float | Average wait time per acquisition |
-| `max_wait_time_ms` | float | Maximum wait time recorded |
-| `cas_failures` | int | CAS failures |
-| `timeouts` | int | Number of timeouts |
-| `last_acquisition_at` | float | Unix timestamp of last acquisition |
-| `current_concurrent` | int | Current in-flight operations |
-| `max_concurrent_reached` | int | Times max concurrent was hit |
-| `total_releases` | int | Total concurrency slot releases |
-
----
-
-### LimiterConfig
-
-Configuration for a rate limiter (used internally).
+| `total_acquisitions` | `int` | Total slots acquired |
+| `total_wait_time_ms` | `float` | Accumulated wait time |
+| `avg_wait_time_ms` | `float` | Average wait time |
+| `max_wait_time_ms` | `float` | Maximum wait time |
+| `timeouts` | `int` | Timeout count |
+| `current_concurrent` | `int` | Current in-flight |
+| `max_concurrent_reached` | `int` | Times limit was hit |
+| `cas_failures` | `int` | CAS failures |
 
 ```python
-@dataclass
-class LimiterConfig:
-    store: str
-    algorithm: Literal["token_bucket", "sliding_window"] = "token_bucket"
-    rate_per_second: float | None = None
-    max_concurrent: int | None = None
-    limit: int | None = None
-    window_seconds: int | None = None
-    timeout: float | None = None
-    fail_closed: bool = False
+metrics = get_limiter("api").get_metrics()
+print(f"Avg wait: {metrics.avg_wait_time_ms:.2f}ms")
+print(f"Concurrent: {metrics.current_concurrent}")
 ```
 
 ---
 
-### Engine Config Dataclasses
+### RateLimitResult
 
-#### MemoryEngineConfig
+Result of a rate limit check.
 
-```python
-@dataclass
-class MemoryEngineConfig:
-    engine: Literal["memory"] = "memory"
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `allowed` | `bool` | Request allowed |
+| `limit` | `int` | Max requests |
+| `remaining` | `int` | Remaining in window |
+| `reset_in` | `float` | Seconds until reset |
+| `limiter_id` | `str \| None` | Limiter ID |
 
-#### RedisEngineConfig
+**Properties:** `reset_at` (Unix timestamp), `retry_after` (seconds for 429)
 
-```python
-@dataclass
-class RedisEngineConfig:
-    url: str
-    engine: Literal["redis"] = "redis"
-    db: int = 0
-    password: str | None = None
-    pool_min_size: int = 2
-    pool_max_size: int = 10
-    key_prefix: str = "rate_limit"
-    timing_margin_ms: float = 10.0
-    socket_timeout: float = 5.0
-    socket_connect_timeout: float = 5.0
-```
+---
 
-#### PostgresEngineConfig
+### LimiterState
+
+Current state snapshot (read-only, no slot consumption).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `allowed` | `bool` | Next acquire would succeed |
+| `remaining` | `int` | Slots remaining |
+| `reset_at` | `int` | Unix timestamp of reset |
+| `current_usage` | `int` | Current usage count |
 
 ```python
-@dataclass
-class PostgresEngineConfig:
-    url: str
-    engine: Literal["postgres"] = "postgres"
-    table_name: str = "rate_limiter_state"
-    schema_name: str = "public"
-    auto_create: bool = False
-    pool_min_size: int = 2
-    pool_max_size: int = 10
-    timing_margin_ms: float = 10.0
+limiter = get_limiter("login")
+state = await limiter.get_state()
+if state.remaining < 3:
+    logger.warning(f"Only {state.remaining} attempts left")
 ```
 
 ---
 
 ## Exceptions
 
-### RateLimiterError
-
-Base exception for all rate limiter errors.
-
-```python
-class RateLimiterError(Exception):
-    pass
-```
-
-### RateLimiterAcquisitionError
-
-Raised when unable to acquire a slot within timeout.
-
-```python
-class RateLimiterAcquisitionError(RateLimiterError):
-    group_id: str | None
-    attempts: int | None
-```
-
-### LimiterNotFoundError
-
-Raised when a limiter is not configured.
-
-```python
-class LimiterNotFoundError(RateLimiterError):
-    limiter_id: str
-```
-
-### StoreNotFoundError
-
-Raised when a store is not configured.
-
-```python
-class StoreNotFoundError(RateLimiterError):
-    store_id: str
-```
-
-### ConfigValidationError
-
-Raised when configuration validation fails.
-
-```python
-class ConfigValidationError(RateLimiterError):
-    field: str | None
-    expected: str | None
-    received: str | None
-```
-
-### RateLimiterNotInitializedError
-
-Raised when a limiter is used before initialization.
-
-```python
-class RateLimiterNotInitializedError(RateLimiterError):
-    name: str | None
-```
+| Exception | Description | Attributes |
+|-----------|-------------|------------|
+| `RateLimiterError` | Base exception | - |
+| `RateLimiterAcquisitionError` | Timeout acquiring slot | `group_id`, `attempts` |
+| `LimiterNotFoundError` | Limiter not configured | `limiter_id` |
+| `StoreNotFoundError` | Store not configured | `store_id` |
+| `ConfigValidationError` | Invalid configuration | `field`, `expected`, `received` |
+| `RateLimiterNotInitializedError` | Used before init | `name` |
 
 ---
 
 ## FastAPI Integration
 
-### RateLimitDependency
+Import from `ratesync.contrib.fastapi`:
 
-FastAPI dependency for rate limiting endpoints.
+### RateLimitDependency
 
 ```python
 class RateLimitDependency:
@@ -665,12 +408,22 @@ class RateLimitDependency:
         fail_open: bool = True,
         trusted_proxies: list[str] | None = None,
     )
-    async def __call__(self, request: Request, response: Response) -> None
 ```
 
-### RateLimitMiddleware
+```python
+from fastapi import Depends, FastAPI
+from ratesync.contrib.fastapi import RateLimitDependency
 
-ASGI middleware for rate limiting.
+app = FastAPI()
+
+@app.get("/api/data")
+async def get_data(_: None = Depends(RateLimitDependency("api"))):
+    return {"data": "value"}
+```
+
+---
+
+### RateLimitMiddleware
 
 ```python
 class RateLimitMiddleware:
@@ -685,9 +438,19 @@ class RateLimitMiddleware:
     )
 ```
 
-### RateLimitExceededError
+```python
+from ratesync.contrib.fastapi import RateLimitMiddleware
 
-Exception raised when rate limit is exceeded.
+app.add_middleware(
+    RateLimitMiddleware,
+    limiter_id="global",
+    exclude_paths=[r"^/health$", r"^/metrics$"],
+)
+```
+
+---
+
+### RateLimitExceededError
 
 ```python
 class RateLimitExceededError(Exception):
@@ -699,36 +462,35 @@ class RateLimitExceededError(Exception):
     retry_after: float | None
 ```
 
-### RateLimitResult
-
-Result of a rate limit check.
-
-```python
-@dataclass
-class RateLimitResult:
-    allowed: bool
-    limit: int
-    remaining: int
-    reset_in: float
-```
+---
 
 ### Helper Functions
 
 ```python
-def rate_limit(
-    limiter_id: str,
-    identifier_extractor: Callable | None = None,
-    timeout: float = 0,
-    fail_open: bool = True,
-) -> RateLimitDependency
+# Exception handler
+def rate_limit_exception_handler(
+    request: Request,
+    exc: RateLimitExceededError,
+) -> Response
 
-def rate_limit_exception_handler(request: Request, exc: RateLimitExceededError) -> Response
+# IP extraction
+def get_client_ip(
+    request: Request,
+    trusted_proxies: list[str] | None = None,
+) -> str
 
-def get_client_ip(request: Request, trusted_proxies: list[str] | None = None) -> str
-
+# Response headers
 def set_rate_limit_headers(response: Response, result: RateLimitResult) -> None
-
 def get_rate_limit_headers(result: RateLimitResult) -> dict[str, str]
+```
+
+```python
+from ratesync.contrib.fastapi import (
+    RateLimitExceededError,
+    rate_limit_exception_handler,
+)
+
+app.add_exception_handler(RateLimitExceededError, rate_limit_exception_handler)
 ```
 
 ---

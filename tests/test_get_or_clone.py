@@ -149,25 +149,6 @@ async def test_get_or_clone_auto_initialize():
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Sliding window requires Redis backend, memory backend doesn't support it")
-async def test_get_or_clone_with_sliding_window():
-    """Test get_or_clone works with sliding window limiters.
-
-    This test requires Redis and is skipped by default.
-    Sliding window algorithm is not supported by memory backend.
-    """
-    # This test would need Redis setup:
-    # configure_store("redis", strategy="redis", url="redis://localhost:6379/0")
-    # configure_limiter(
-    #     "base_login", store_id="redis", algorithm="sliding_window",
-    #     limit=5, window_seconds=60
-    # )
-    # limiter = await get_or_clone_limiter("base_login", "user@example.com")
-    # ...
-    pass
-
-
-@pytest.mark.asyncio
 async def test_manual_clone_vs_get_or_clone():
     """Test that manual clone_limiter + get_limiter is equivalent to get_or_clone_limiter."""
     # Arrange - manual clone

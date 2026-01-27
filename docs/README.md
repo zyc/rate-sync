@@ -1,135 +1,127 @@
 # rate-sync Documentation
 
-Welcome to the rate-sync documentation. This guide covers everything you need to know about using rate-sync for distributed rate limiting in Python applications.
+Distributed rate limiting for Python with declarative configuration.
 
-## Table of Contents
+## Quick Links
 
-### Getting Started
+| Category | Documentation |
+|----------|---------------|
+| **Getting Started** | [Main README](../README.md) |
+| **Configuration** | [Configuration Guide](configuration.md) |
+| **API** | [API Reference](api-reference.md) |
+| **FastAPI** | [FastAPI Integration](fastapi-integration.md) |
+| **Observability** | [Metrics & Monitoring](observability.md) |
 
-- [Main README](../README.md) - Installation, quick start, and overview
-- [Configuration Guide](configuration.md) - TOML and programmatic configuration
+## Engine Selection
 
-### Engines
+| Engine | Use Case | Coordination | Documentation |
+|--------|----------|--------------|---------------|
+| Memory | Development, single-process | Local | [Memory Engine](engines/memory.md) |
+| Redis | Production (recommended) | Distributed | [Redis Engine](engines/redis.md) |
+| PostgreSQL | Existing database infrastructure | Distributed | [PostgreSQL Engine](engines/postgres.md) |
 
-Choose the right engine for your use case:
+## Algorithm Selection
 
-- [Memory Engine](engines/memory.md) - In-memory rate limiting (development, single-process)
-- [Redis Engine](engines/redis.md) - High-performance distributed (recommended for production)
-- [PostgreSQL Engine](engines/postgres.md) - Database-backed coordination
+| Algorithm | Parameters | Best For |
+|-----------|------------|----------|
+| Token Bucket | `rate_per_second`, `max_concurrent` | API throughput control |
+| Sliding Window | `limit`, `window_seconds` | Auth protection, abuse prevention |
 
-### Integrations
+## 5-Minute Quick Start
 
-- [FastAPI Integration](fastapi-integration.md) - Dependencies, middleware, and exception handling
+### 1. Install
 
-### Reference
+```bash
+pip install rate-sync[redis]  # Production
+pip install rate-sync          # Development (memory only)
+```
 
-- [API Reference](api-reference.md) - Complete API documentation
-- [Observability](observability.md) - Metrics, monitoring, and alerting
+### 2. Configure
 
-### Additional Resources
+Create `rate-sync.toml`:
 
-- [Changelog](../CHANGELOG.md) - Version history
-- [Contributing](../CONTRIBUTING.md) - How to contribute
+```toml
+[stores.main]
+engine = "redis"
+url = "${REDIS_URL:-redis://localhost:6379/0}"
 
----
+[limiters.api]
+store = "main"
+rate_per_second = 100.0
+max_concurrent = 50
+timeout = 30.0
+```
 
-## Quick Navigation
-
-### By Use Case
-
-| Use Case | Recommended Engine | Documentation |
-|----------|-------------------|---------------|
-| Development/Testing | Memory | [Memory Engine](engines/memory.md) |
-| Production (recommended) | Redis | [Redis Engine](engines/redis.md) |
-| Existing PostgreSQL | PostgreSQL | [PostgreSQL Engine](engines/postgres.md) |
-
-### By Algorithm
-
-| Algorithm | Use Case | Configuration |
-|-----------|----------|---------------|
-| Token Bucket | Throughput control (req/sec) | [Configuration](configuration.md#token-bucket) |
-| Sliding Window | Auth protection (attempts/window) | [Configuration](configuration.md#sliding-window) |
-
-### By Integration
-
-| Framework | Integration | Documentation |
-|-----------|-------------|---------------|
-| FastAPI | Dependencies, Middleware | [FastAPI Integration](fastapi-integration.md) |
-| Generic | Decorator, Context Manager | [API Reference](api-reference.md) |
-
----
-
-## Overview
-
-rate-sync is a distributed rate limiter for Python with the following key features:
-
-### Zero Configuration
-
-Just create a `rate-sync.toml` file and import the package:
+### 3. Use
 
 ```python
 from ratesync import acquire
 
-await acquire("api")
+# Config auto-loads on import
+async with acquire("api"):
+    response = await client.get(url)
 ```
-
-### Dual Limiting Strategies
-
-- **Rate Limiting** (`rate_per_second`): Controls throughput
-- **Concurrency Limiting** (`max_concurrent`): Controls parallelism
-
-### Multiple Algorithms
-
-- **Token Bucket**: For API rate limiting
-- **Sliding Window**: For authentication protection
-
-### Multiple Engines
-
-- **Memory**: Development and single-process
-- **Redis**: Production with Redis
-- **PostgreSQL**: Production with existing database
-
-### Built-in Observability
-
-```python
-metrics = get_limiter("api").get_metrics()
-print(f"Avg wait: {metrics.avg_wait_time_ms}ms")
-```
-
----
 
 ## Architecture
 
 ```
-+------------------+     +------------------+     +------------------+
-|   Application    |     |   Application    |     |   Application    |
-|   (Container 1)  |     |   (Container 2)  |     |   (Container 3)  |
-+--------+---------+     +--------+---------+     +--------+---------+
-         |                        |                        |
-         v                        v                        v
-+--------+---------+     +--------+---------+     +--------+---------+
-|    rate-sync     |     |    rate-sync     |     |    rate-sync     |
-|    (limiter)     |     |    (limiter)     |     |    (limiter)     |
-+--------+---------+     +--------+---------+     +--------+---------+
-         |                        |                        |
-         +------------------------+------------------------+
-                                  |
-                                  v
-                    +-------------+-------------+
-                    |      Coordination Store   |
-                    |    (Redis / PostgreSQL)   |
-                    +---------------------------+
+Application Instances          Coordination Store
++------------------+          +------------------+
+|   rate-sync      |--------->|                  |
++------------------+          |  Redis or        |
++------------------+          |  PostgreSQL      |
+|   rate-sync      |--------->|                  |
++------------------+          +------------------+
++------------------+
+|   rate-sync      |---------------^
++------------------+
 ```
 
-The architecture separates **stores** (coordination mechanism) from **limiters** (rate limit rules), allowing:
+**Key concepts:**
 
-- Multiple limiters to share one store
-- Easy switching between development (memory) and production (Redis/PostgreSQL)
-- Clear separation of concerns
+- **Stores** define the coordination mechanism (Memory, Redis, PostgreSQL)
+- **Limiters** define rate limiting rules and reference a store
+- Multiple limiters can share one store connection
 
----
+## Common Patterns
 
-## Getting Help
+### Rate Limiting (Throughput)
 
-- **Issues**: [GitHub Issues](https://github.com/rate-sync/rate-sync/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/rate-sync/rate-sync/discussions)
+```toml
+[limiters.external_api]
+store = "redis"
+rate_per_second = 10.0  # Max 10 req/sec
+```
+
+### Concurrency Limiting (Parallelism)
+
+```toml
+[limiters.db_pool]
+store = "redis"
+max_concurrent = 20  # Max 20 simultaneous
+```
+
+### Combined (Production)
+
+```toml
+[limiters.production]
+store = "redis"
+rate_per_second = 100.0  # Throughput
+max_concurrent = 50       # Parallelism
+timeout = 30.0
+```
+
+### Auth Protection (Sliding Window)
+
+```toml
+[limiters.login]
+store = "redis"
+algorithm = "sliding_window"
+limit = 5
+window_seconds = 300  # 5 attempts per 5 min
+```
+
+## Support
+
+- [GitHub Issues](https://github.com/zyc/rate-sync/issues)
+- [GitHub Discussions](https://github.com/zyc/rate-sync/discussions)

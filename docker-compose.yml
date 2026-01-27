@@ -1,0 +1,154 @@
+# =============================================================================
+# Docker Compose for rate-sync Integration Tests
+# =============================================================================
+#
+# QUICK START:
+#   docker compose up -d                    # Start default versions
+#   docker compose --profile all up -d      # Start all versions
+#
+# MULTI-VERSION TESTING:
+#   docker compose --profile redis-6 up -d  # Redis 6 only
+#   docker compose --profile redis-7 up -d  # Redis 7 only
+#   docker compose --profile pg-14 up -d    # PostgreSQL 14 only
+#   docker compose --profile pg-15 up -d    # PostgreSQL 15 only
+#   docker compose --profile pg-16 up -d    # PostgreSQL 16 only
+#
+# ENVIRONMENT VARIABLES:
+#   REDIS_URL="redis://localhost:6379/0"
+#   REDIS6_URL="redis://localhost:6380/0"
+#   POSTGRES_URL="postgresql://postgres:postgres@localhost:5432/ratesync"
+#   POSTGRES14_URL="postgresql://postgres:postgres@localhost:5433/ratesync"
+#   POSTGRES15_URL="postgresql://postgres:postgres@localhost:5434/ratesync"
+#
+# RUN TESTS:
+#   poetry run pytest -m integration        # All integration tests
+#   poetry run pytest -m redis              # Redis tests
+#   poetry run pytest -m postgres           # PostgreSQL tests
+#
+# =============================================================================
+
+name: rate-sync
+
+services:
+  # ===========================================================================
+  # Redis Versions
+  # ===========================================================================
+
+  # Redis 7 (default) - Current stable
+  redis:
+    image: redis:7.4-alpine
+    container_name: rate-sync-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly no --save ""
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # Redis 6 - LTS version
+  redis-6:
+    image: redis:6.2-alpine
+    container_name: rate-sync-redis-6
+    profiles: ["redis-6", "all"]
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly no --save ""
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # ===========================================================================
+  # PostgreSQL Versions
+  # ===========================================================================
+
+  # PostgreSQL 16 (default) - Current stable
+  postgres:
+    image: postgres:16.6-alpine
+    container_name: rate-sync-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ratesync
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # PostgreSQL 15
+  postgres-15:
+    image: postgres:15.10-alpine
+    container_name: rate-sync-postgres-15
+    profiles: ["pg-15", "all"]
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ratesync
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # PostgreSQL 14
+  postgres-14:
+    image: postgres:14.15-alpine
+    container_name: rate-sync-postgres-14
+    profiles: ["pg-14", "all"]
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ratesync
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ===========================================================================
+  # FUTURE SERVICES
+  # ===========================================================================
+
+  # Memcached (uncomment when implementing)
+  # memcached:
+  #   image: memcached:alpine
+  #   container_name: rate-sync-memcached
+  #   profiles: ["memcached", "all"]
+  #   ports:
+  #     - "11211:11211"
+  #   healthcheck:
+  #     test: ["CMD", "nc", "-z", "localhost", "11211"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+  #   restart: unless-stopped

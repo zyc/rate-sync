@@ -26,7 +26,7 @@ except ImportError:
 
 from ratesync.core import RateLimiter, RateLimiterMetrics
 from ratesync.exceptions import RateLimiterAcquisitionError
-from ratesync.schemas import PostgresEngineConfig
+from ratesync.schemas import LimiterReadOnlyConfig, LimiterState, PostgresEngineConfig
 
 logger = logging.getLogger(__name__)
 
@@ -34,24 +34,33 @@ logger = logging.getLogger(__name__)
 class PostgresRateLimiter(RateLimiter):
     """PostgreSQL-based rate limiter with distributed coordination.
 
-    Uses a PostgreSQL table to store rate limit state and coordinate across
+    Uses PostgreSQL tables to store rate limit state and coordinate across
     multiple processes/containers. Implements optimistic locking with version
     numbers for safe concurrent updates.
 
-    Supports two complementary limiting strategies:
-    - **rate_per_second**: Controls throughput using timestamp tracking
+    Supports multiple limiting strategies:
+    - **token_bucket**: Rate limiting with token bucket (rate_per_second)
+    - **sliding_window**: Quota-based limiting in time window (limit + window_seconds)
     - **max_concurrent**: Controls parallelism using a distributed counter
 
-    At least one strategy must be configured. Both can be used together
-    for fine-grained control.
+    At least one rate limiting strategy (token_bucket or sliding_window) must be configured.
+    Both can be combined with max_concurrent for fine-grained control.
 
     Example:
         >>> from ratesync.engines.postgres import PostgresRateLimiter
+        >>> # Token bucket algorithm
         >>> limiter = PostgresRateLimiter(
         ...     connection_url="postgresql://user:pass@localhost/db",
         ...     group_id="api",
         ...     rate_per_second=10.0,
         ...     max_concurrent=5,
+        ... )
+        >>> # Sliding window algorithm
+        >>> limiter = PostgresRateLimiter(
+        ...     connection_url="postgresql://user:pass@localhost/db",
+        ...     group_id="api",
+        ...     limit=100,
+        ...     window_seconds=60,
         ... )
         >>> await limiter.initialize()
         >>> async with limiter.acquire_context():
@@ -63,6 +72,8 @@ class PostgresRateLimiter(RateLimiter):
         connection_url: str,
         group_id: str,
         rate_per_second: float | None = None,
+        limit: int | None = None,
+        window_seconds: int | None = None,
         max_concurrent: int | None = None,
         table_name: str = "rate_limiter_state",
         schema_name: str = "public",
@@ -78,7 +89,9 @@ class PostgresRateLimiter(RateLimiter):
         Args:
             connection_url: PostgreSQL connection URL
             group_id: Rate limit group identifier
-            rate_per_second: Operations per second allowed (None = unlimited throughput)
+            rate_per_second: Operations per second allowed (token_bucket algorithm)
+            limit: Max requests in window (sliding_window algorithm)
+            window_seconds: Window size in seconds (sliding_window algorithm)
             max_concurrent: Maximum simultaneous operations (None = unlimited concurrency)
             table_name: Name of the table for storing state
             schema_name: PostgreSQL schema name
@@ -92,8 +105,9 @@ class PostgresRateLimiter(RateLimiter):
                         allows requests when PostgreSQL fails (fail-open behavior).
 
         Raises:
-            ValueError: If neither rate_per_second nor max_concurrent is specified
-            ValueError: If rate_per_second <= 0 or max_concurrent <= 0
+            ValueError: If neither rate_per_second nor (limit + window_seconds) is specified
+            ValueError: If both token_bucket and sliding_window params are specified
+            ValueError: If rate_per_second <= 0 or limit <= 0 or window_seconds <= 0
             ImportError: If asyncpg is not installed
         """
         if not POSTGRES_AVAILABLE:
@@ -105,12 +119,34 @@ class PostgresRateLimiter(RateLimiter):
                 "  pip install asyncpg"
             )
 
-        # Validate at least one limiting strategy is specified
-        if rate_per_second is None and max_concurrent is None:
-            raise ValueError("At least one of rate_per_second or max_concurrent must be specified")
+        # Validate algorithm configuration
+        has_token_bucket = rate_per_second is not None
+        has_sliding_window = limit is not None or window_seconds is not None
 
+        if not has_token_bucket and not has_sliding_window and max_concurrent is None:
+            raise ValueError(
+                "At least one of (rate_per_second) or (limit+window_seconds) "
+                "or max_concurrent must be specified"
+            )
+
+        if has_token_bucket and has_sliding_window:
+            raise ValueError(
+                "Cannot specify both token_bucket (rate_per_second) and "
+                "sliding_window (limit+window_seconds) parameters"
+            )
+
+        if has_sliding_window and (limit is None or window_seconds is None):
+            raise ValueError("sliding_window algorithm requires both 'limit' and 'window_seconds'")
+
+        # Validate parameter values
         if rate_per_second is not None and rate_per_second <= 0:
             raise ValueError(f"rate_per_second must be > 0, got: {rate_per_second}")
+
+        if limit is not None and limit <= 0:
+            raise ValueError(f"limit must be > 0, got: {limit}")
+
+        if window_seconds is not None and window_seconds <= 0:
+            raise ValueError(f"window_seconds must be > 0, got: {window_seconds}")
 
         if max_concurrent is not None and max_concurrent <= 0:
             raise ValueError(f"max_concurrent must be > 0, got: {max_concurrent}")
@@ -121,6 +157,8 @@ class PostgresRateLimiter(RateLimiter):
         self._connection_url = connection_url
         self._group_id = group_id.strip()
         self._rate = rate_per_second
+        self._limit = limit
+        self._window_seconds = window_seconds
         self._max_concurrent = max_concurrent
         self._table_name = table_name
         self._schema_name = schema_name
@@ -131,8 +169,17 @@ class PostgresRateLimiter(RateLimiter):
         self._default_timeout = default_timeout
         self._fail_closed = fail_closed
 
-        # Computed values
-        self._interval = 1.0 / rate_per_second if rate_per_second else None
+        # Determine algorithm
+        if has_token_bucket:
+            self._algorithm = "token_bucket"
+            self._interval = 1.0 / rate_per_second if rate_per_second else None
+        elif has_sliding_window:
+            self._algorithm = "sliding_window"
+            self._interval = None
+        else:
+            # Only max_concurrent specified
+            self._algorithm = "token_bucket"
+            self._interval = None
 
         self._pool = None
         self._initialized = False
@@ -141,8 +188,13 @@ class PostgresRateLimiter(RateLimiter):
 
     @property
     def _full_table_name(self) -> str:
-        """Return fully qualified table name."""
+        """Return fully qualified table name for token bucket state."""
         return f"{self._schema_name}.{self._table_name}"
+
+    @property
+    def _window_table_name(self) -> str:
+        """Return fully qualified table name for sliding window timestamps."""
+        return f"{self._schema_name}.{self._table_name}_window"
 
     async def initialize(self) -> None:
         """Initialize connection pool and optionally create table structure.
@@ -203,8 +255,9 @@ class PostgresRateLimiter(RateLimiter):
             raise
 
     async def _create_table_if_not_exists(self) -> None:
-        """Create rate limiter table if it doesn't exist."""
-        create_table_sql = f"""
+        """Create rate limiter tables if they don't exist."""
+        # Token bucket / concurrency state table
+        create_state_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {self._full_table_name} (
             group_id VARCHAR(255) PRIMARY KEY,
             last_acquisition_at TIMESTAMPTZ NOT NULL,
@@ -216,12 +269,26 @@ class PostgresRateLimiter(RateLimiter):
         ON {self._full_table_name}(group_id);
         """
 
+        # Sliding window timestamps table
+        create_window_table_sql = f"""
+        CREATE TABLE IF NOT EXISTS {self._window_table_name} (
+            id BIGSERIAL PRIMARY KEY,
+            group_id VARCHAR(255) NOT NULL,
+            timestamp_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_{self._table_name}_window_group_ts
+        ON {self._window_table_name}(group_id, timestamp_at);
+        """
+
         async with self._pool.acquire() as conn:
-            await conn.execute(create_table_sql)
+            await conn.execute(create_state_table_sql)
+            await conn.execute(create_window_table_sql)
 
         logger.info(
-            "Created table %s (if not exists) for rate limiting",
+            "Created tables %s and %s (if not exists) for rate limiting",
             self._full_table_name,
+            self._window_table_name,
         )
 
     async def acquire(self) -> None:
@@ -243,6 +310,13 @@ class PostgresRateLimiter(RateLimiter):
                 "Call initialize() first."
             )
 
+        if self._algorithm == "sliding_window":
+            await self._acquire_sliding_window()
+        else:
+            await self._acquire_token_bucket()
+
+    async def _acquire_token_bucket(self) -> None:
+        """Acquire using token bucket algorithm."""
         start_time = time.time()
 
         while True:
@@ -284,8 +358,8 @@ class PostgresRateLimiter(RateLimiter):
                             wait_time_ms,
                         )
                         return
-                    except (KeyError, OSError, ValueError):
-                        # Race condition - another process inserted first
+                    except asyncpg_module.exceptions.UniqueViolationError:
+                        # Race condition - another process inserted first, retry
                         continue
 
                 # Check rate limiting
@@ -352,6 +426,127 @@ class PostgresRateLimiter(RateLimiter):
                     # Wait for concurrency slot
                     await asyncio.sleep(0.01)
 
+    async def _acquire_sliding_window(self) -> None:
+        """Acquire using sliding window algorithm."""
+        start_time = time.time()
+
+        while True:
+            now_ts = time.time()
+            cutoff_ts = now_ts - self._window_seconds
+
+            async with self._pool.acquire() as conn:
+                # Clean old entries and count current in one transaction
+                async with conn.transaction():
+                    # Delete expired entries
+                    await conn.execute(
+                        f"""
+                        DELETE FROM {self._window_table_name}
+                        WHERE group_id = $1 AND timestamp_at < to_timestamp($2)
+                        """,
+                        self._group_id,
+                        cutoff_ts,
+                    )
+
+                    # Lock state row first to serialize concurrent access
+                    # This prevents race conditions in the count/insert sequence
+                    row = await conn.fetchrow(
+                        f"""
+                        SELECT concurrent_count FROM {self._full_table_name}
+                        WHERE group_id = $1
+                        FOR UPDATE
+                        """,
+                        self._group_id,
+                    )
+
+                    if row is None:
+                        # First time - insert state row with lock
+                        try:
+                            await conn.execute(
+                                f"""
+                                INSERT INTO {self._full_table_name}
+                                (group_id, last_acquisition_at, concurrent_count, version)
+                                VALUES ($1, to_timestamp($2), 0, 1)
+                                """,
+                                self._group_id,
+                                now_ts,
+                            )
+                        except asyncpg_module.exceptions.UniqueViolationError:
+                            # Race condition - another process inserted, retry
+                            continue
+
+                    # Now count current entries in window (with lock held)
+                    current_count = await conn.fetchval(
+                        f"""
+                        SELECT COUNT(*) FROM {self._window_table_name}
+                        WHERE group_id = $1
+                        """,
+                        self._group_id,
+                    )
+
+                    # Check if within limit
+                    if current_count < self._limit:
+                        # Check concurrency limit if configured
+                        concurrent_ok = True
+                        if self._max_concurrent is not None:
+                            current_concurrent = row["concurrent_count"] if row else 0
+                            if current_concurrent >= self._max_concurrent:
+                                concurrent_ok = False
+                                self._metrics.record_max_concurrent_reached()
+                            else:
+                                # Increment concurrent count
+                                await conn.execute(
+                                    f"""
+                                    UPDATE {self._full_table_name}
+                                    SET concurrent_count = concurrent_count + 1,
+                                        version = version + 1
+                                    WHERE group_id = $1
+                                    """,
+                                    self._group_id,
+                                )
+
+                        if concurrent_ok:
+                            # Insert new timestamp entry
+                            await conn.execute(
+                                f"""
+                                INSERT INTO {self._window_table_name}
+                                (group_id, timestamp_at)
+                                VALUES ($1, to_timestamp($2))
+                                """,
+                                self._group_id,
+                                now_ts,
+                            )
+
+                            # Successfully acquired
+                            wait_time_ms = (time.time() - start_time) * 1000
+                            self._metrics.record_acquisition(wait_time_ms)
+                            if self._max_concurrent:
+                                self._metrics.record_concurrent_acquire()
+                            logger.debug(
+                                "Group '%s': Acquired sliding window (waited %.2fms)",
+                                self._group_id,
+                                wait_time_ms,
+                            )
+                            return
+
+                    # Need to wait - find oldest entry to calculate wait time
+                    oldest = await conn.fetchval(
+                        f"""
+                        SELECT MIN(timestamp_at) FROM {self._window_table_name}
+                        WHERE group_id = $1
+                        """,
+                        self._group_id,
+                    )
+
+            # Calculate wait time
+            if oldest is not None:
+                oldest_ts = oldest.timestamp()
+                wait_until = oldest_ts + self._window_seconds
+                wait_time = max(0.01, wait_until - time.time())
+            else:
+                wait_time = 0.01
+
+            await asyncio.sleep(wait_time)
+
     async def release(self) -> None:
         """Release a concurrency slot after operation completes.
 
@@ -407,16 +602,17 @@ class PostgresRateLimiter(RateLimiter):
                 "Call initialize() first."
             )
 
+        if self._algorithm == "sliding_window":
+            return await self._try_acquire_sliding_window(timeout)
+        return await self._try_acquire_token_bucket(timeout)
+
+    async def _try_acquire_token_bucket(self, timeout: float) -> bool:
+        """Try to acquire using token bucket algorithm with timeout."""
         start_time = time.time()
+        first_attempt = True
 
         try:
             while True:
-                # Check timeout
-                elapsed = time.time() - start_time
-                if elapsed >= timeout:
-                    self._metrics.record_timeout()
-                    return False
-
                 now_ts = time.time()
 
                 async with self._pool.acquire() as conn:
@@ -448,7 +644,8 @@ class PostgresRateLimiter(RateLimiter):
                             if self._max_concurrent:
                                 self._metrics.record_concurrent_acquire()
                             return True
-                        except (KeyError, OSError, ValueError):
+                        except asyncpg_module.exceptions.UniqueViolationError:
+                            # Race condition - another process inserted first, retry
                             continue
 
                     # Check rate limiting
@@ -491,13 +688,20 @@ class PostgresRateLimiter(RateLimiter):
                                 self._metrics.record_concurrent_acquire()
                             return True
 
-                    # Wait a bit and retry
-                    remaining = timeout - (time.time() - start_time)
-                    if remaining > 0:
-                        await asyncio.sleep(min(0.01, remaining))
-                    else:
+                # Check timeout AFTER first attempt (timeout=0 means try once)
+                if first_attempt:
+                    first_attempt = False
+                    if timeout == 0:
                         self._metrics.record_timeout()
                         return False
+
+                # Wait a bit and retry
+                remaining = timeout - (time.time() - start_time)
+                if remaining > 0:
+                    await asyncio.sleep(min(0.01, remaining))
+                else:
+                    self._metrics.record_timeout()
+                    return False
 
         except (KeyError, OSError, ValueError) as e:
             if self._fail_closed:
@@ -505,7 +709,128 @@ class PostgresRateLimiter(RateLimiter):
                     f"Backend failure and fail_closed=True for group '{self._group_id}': {e}",
                     group_id=self._group_id,
                 ) from e
-            # Fail-open: log warning and allow request
+            logger.warning(
+                "Rate limiter backend failure for group '%s', allowing request (fail_open): %s",
+                self._group_id,
+                e,
+            )
+            return True
+
+    async def _try_acquire_sliding_window(self, timeout: float) -> bool:
+        """Try to acquire using sliding window algorithm with timeout."""
+        start_time = time.time()
+        first_attempt = True
+
+        try:
+            while True:
+                now_ts = time.time()
+                cutoff_ts = now_ts - self._window_seconds
+
+                async with self._pool.acquire() as conn:
+                    async with conn.transaction():
+                        # Delete expired entries
+                        await conn.execute(
+                            f"""
+                            DELETE FROM {self._window_table_name}
+                            WHERE group_id = $1 AND timestamp_at < to_timestamp($2)
+                            """,
+                            self._group_id,
+                            cutoff_ts,
+                        )
+
+                        # Lock state row first to serialize concurrent access
+                        row = await conn.fetchrow(
+                            f"""
+                            SELECT concurrent_count FROM {self._full_table_name}
+                            WHERE group_id = $1
+                            FOR UPDATE
+                            """,
+                            self._group_id,
+                        )
+
+                        if row is None:
+                            # First time - insert state row with lock
+                            try:
+                                await conn.execute(
+                                    f"""
+                                    INSERT INTO {self._full_table_name}
+                                    (group_id, last_acquisition_at, concurrent_count, version)
+                                    VALUES ($1, to_timestamp($2), 0, 1)
+                                    """,
+                                    self._group_id,
+                                    now_ts,
+                                )
+                            except asyncpg_module.exceptions.UniqueViolationError:
+                                # Race condition - retry
+                                continue
+
+                        # Now count entries with lock held
+                        current_count = await conn.fetchval(
+                            f"""
+                            SELECT COUNT(*) FROM {self._window_table_name}
+                            WHERE group_id = $1
+                            """,
+                            self._group_id,
+                        )
+
+                        # Check if within limit
+                        if current_count < self._limit:
+                            # Check concurrency limit if configured
+                            concurrent_ok = True
+                            if self._max_concurrent is not None:
+                                current_concurrent = row["concurrent_count"] if row else 0
+                                if current_concurrent >= self._max_concurrent:
+                                    concurrent_ok = False
+                                else:
+                                    await conn.execute(
+                                        f"""
+                                        UPDATE {self._full_table_name}
+                                        SET concurrent_count = concurrent_count + 1,
+                                            version = version + 1
+                                        WHERE group_id = $1
+                                        """,
+                                        self._group_id,
+                                    )
+
+                            if concurrent_ok:
+                                # Insert new timestamp entry
+                                await conn.execute(
+                                    f"""
+                                    INSERT INTO {self._window_table_name}
+                                    (group_id, timestamp_at)
+                                    VALUES ($1, to_timestamp($2))
+                                    """,
+                                    self._group_id,
+                                    now_ts,
+                                )
+
+                                wait_time_ms = (time.time() - start_time) * 1000
+                                self._metrics.record_acquisition(wait_time_ms)
+                                if self._max_concurrent:
+                                    self._metrics.record_concurrent_acquire()
+                                return True
+
+                # Check timeout AFTER first attempt (timeout=0 means try once)
+                if first_attempt:
+                    first_attempt = False
+                    if timeout == 0:
+                        self._metrics.record_timeout()
+                        return False
+
+                # Wait a bit and retry
+                remaining = timeout - (time.time() - start_time)
+                if remaining > 0:
+                    await asyncio.sleep(min(0.01, remaining))
+                else:
+                    self._metrics.record_timeout()
+                    return False
+
+        except (KeyError, OSError, ValueError) as e:
+            if self._fail_closed:
+                raise RateLimiterAcquisitionError(
+                    f"Backend failure and fail_closed=True for group '{self._group_id}': {e}",
+                    group_id=self._group_id,
+                ) from e
             logger.warning(
                 "Rate limiter backend failure for group '%s', allowing request (fail_open): %s",
                 self._group_id,
@@ -547,8 +872,23 @@ class PostgresRateLimiter(RateLimiter):
 
     @property
     def rate_per_second(self) -> float | None:
-        """Return the operations per second rate (None = unlimited)."""
+        """Return the operations per second rate (None = unlimited, token_bucket only)."""
         return self._rate
+
+    @property
+    def limit(self) -> int | None:
+        """Return max requests in window (sliding_window only)."""
+        return self._limit
+
+    @property
+    def window_seconds(self) -> int | None:
+        """Return window size in seconds (sliding_window only)."""
+        return self._window_seconds
+
+    @property
+    def algorithm(self) -> str:
+        """Return the rate limiting algorithm: 'token_bucket' or 'sliding_window'."""
+        return self._algorithm
 
     @property
     def max_concurrent(self) -> int | None:
@@ -579,8 +919,13 @@ class PostgresRateLimiter(RateLimiter):
         Args:
             config: PostgreSQL engine configuration (PostgresEngineConfig)
             group_id: Rate limit group identifier
-            rate_per_second: Operations per second allowed (None = unlimited)
-            **kwargs: Additional runtime parameters (timeout, max_concurrent)
+            rate_per_second: Operations per second allowed (token_bucket algorithm)
+            **kwargs: Additional runtime parameters:
+                - limit: Max requests in window (sliding_window algorithm)
+                - window_seconds: Window size in seconds (sliding_window algorithm)
+                - timeout: Default timeout for acquire operations
+                - max_concurrent: Maximum simultaneous operations
+                - fail_closed: Block on backend failure if True
 
         Returns:
             Configured PostgresRateLimiter instance
@@ -590,13 +935,15 @@ class PostgresRateLimiter(RateLimiter):
 
         Example:
             >>> config = PostgresEngineConfig(url="postgresql://localhost/db")
-            >>> # Rate limiting only
+            >>> # Token bucket algorithm
             >>> limiter = PostgresRateLimiter.from_config(config, "api", rate_per_second=1.0)
             >>>
-            >>> # Concurrency limiting only
-            >>> limiter = PostgresRateLimiter.from_config(config, "api", max_concurrent=10)
+            >>> # Sliding window algorithm
+            >>> limiter = PostgresRateLimiter.from_config(
+            ...     config, "api", limit=100, window_seconds=60
+            ... )
             >>>
-            >>> # Both (recommended for production)
+            >>> # With concurrency limiting
             >>> limiter = PostgresRateLimiter.from_config(
             ...     config, "api", rate_per_second=10.0, max_concurrent=5
             ... )
@@ -608,11 +955,15 @@ class PostgresRateLimiter(RateLimiter):
         timeout = kwargs.get("timeout", None)
         max_concurrent = kwargs.get("max_concurrent", None)
         fail_closed = kwargs.get("fail_closed", False)
+        limit = kwargs.get("limit", None)
+        window_seconds = kwargs.get("window_seconds", None)
 
         return cls(
             connection_url=config.url,
             group_id=group_id,
             rate_per_second=rate_per_second,
+            limit=limit,
+            window_seconds=window_seconds,
             max_concurrent=max_concurrent,
             table_name=config.table_name,
             schema_name=config.schema_name,
@@ -623,3 +974,231 @@ class PostgresRateLimiter(RateLimiter):
             default_timeout=timeout,
             fail_closed=fail_closed,
         )
+
+    def get_config(self) -> LimiterReadOnlyConfig:
+        """Get this limiter's configuration (read-only).
+
+        Returns:
+            LimiterReadOnlyConfig with all configuration values.
+        """
+        return LimiterReadOnlyConfig(
+            id=self._group_id,
+            algorithm=self._algorithm,
+            store_id="postgres",
+            rate_per_second=self._rate,
+            max_concurrent=self._max_concurrent,
+            timeout=self._default_timeout,
+            limit=self._limit,
+            window_seconds=self._window_seconds,
+            fail_closed=self._fail_closed,
+        )
+
+    async def get_state(self) -> LimiterState:
+        """Get current state without consuming slots.
+
+        For PostgreSQL, this provides current usage and availability based on
+        the configured algorithm (token_bucket or sliding_window).
+
+        Returns:
+            LimiterState with current usage and availability.
+
+        Raises:
+            RuntimeError: If rate limiter wasn't initialized
+        """
+        if not self._initialized or self._pool is None:
+            raise RuntimeError(
+                f"Rate limiter for group '{self._group_id}' not initialized. "
+                "Call initialize() first."
+            )
+
+        now = time.time()
+
+        try:
+            if self._algorithm == "sliding_window":
+                return await self._get_sliding_window_state(now)
+            return await self._get_token_bucket_state(now)
+
+        except (KeyError, OSError, ValueError) as e:
+            if self._fail_closed:
+                raise RateLimiterAcquisitionError(
+                    f"Backend failure and fail_closed=True for group '{self._group_id}': {e}",
+                    group_id=self._group_id,
+                ) from e
+            # Fail-open: return permissive state
+            return LimiterState(
+                allowed=True,
+                remaining=100,
+                reset_at=int(now + 1.0),
+                current_usage=0,
+            )
+
+    async def _get_token_bucket_state(self, now: float) -> LimiterState:
+        """Get state for token bucket algorithm."""
+        allowed = True
+        remaining = 100
+        reset_at = int(now + 1.0)
+
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                f"""
+                SELECT last_acquisition_at, concurrent_count
+                FROM {self._full_table_name}
+                WHERE group_id = $1
+                """,
+                self._group_id,
+            )
+
+            current_usage = 0
+            if row is not None:
+                # Check if rate-limited
+                if self._interval is not None:
+                    last_acq = row["last_acquisition_at"].timestamp()
+                    elapsed = now - last_acq
+                    if elapsed < self._interval:
+                        allowed = False
+                        reset_at = int(last_acq + self._interval + 1)
+
+                # Check concurrent count
+                if self._max_concurrent:
+                    current_usage = row["concurrent_count"]
+                    if current_usage >= self._max_concurrent:
+                        allowed = False
+                    remaining = max(0, self._max_concurrent - current_usage)
+
+        return LimiterState(
+            allowed=allowed,
+            remaining=remaining,
+            reset_at=reset_at,
+            current_usage=current_usage,
+        )
+
+    async def _get_sliding_window_state(self, now: float) -> LimiterState:
+        """Get state for sliding window algorithm."""
+        if self._limit is None or self._window_seconds is None:
+            return LimiterState(
+                allowed=True,
+                remaining=999,
+                reset_at=int(now + 1.0),
+                current_usage=0,
+            )
+
+        cutoff_ts = now - self._window_seconds
+
+        async with self._pool.acquire() as conn:
+            # Count current entries in window
+            current_count = await conn.fetchval(
+                f"""
+                SELECT COUNT(*) FROM {self._window_table_name}
+                WHERE group_id = $1 AND timestamp_at >= to_timestamp($2)
+                """,
+                self._group_id,
+                cutoff_ts,
+            )
+
+            remaining_rate = max(0, self._limit - current_count)
+            allowed = remaining_rate > 0
+
+            # Get oldest entry for reset time
+            oldest = await conn.fetchval(
+                f"""
+                SELECT MIN(timestamp_at) FROM {self._window_table_name}
+                WHERE group_id = $1 AND timestamp_at >= to_timestamp($2)
+                """,
+                self._group_id,
+                cutoff_ts,
+            )
+
+            if oldest is not None:
+                reset_at = int(oldest.timestamp() + self._window_seconds)
+            else:
+                reset_at = int(now + self._window_seconds)
+
+            # Check concurrent count
+            current_concurrent = 0
+            remaining_concurrent = 999
+            if self._max_concurrent:
+                row = await conn.fetchrow(
+                    f"""
+                    SELECT concurrent_count FROM {self._full_table_name}
+                    WHERE group_id = $1
+                    """,
+                    self._group_id,
+                )
+                if row is not None:
+                    current_concurrent = row["concurrent_count"]
+                    if current_concurrent >= self._max_concurrent:
+                        allowed = False
+                    remaining_concurrent = max(0, self._max_concurrent - current_concurrent)
+
+        remaining = min(remaining_rate, remaining_concurrent)
+        current_usage = max(current_count, current_concurrent)
+
+        return LimiterState(
+            allowed=allowed,
+            remaining=remaining,
+            reset_at=reset_at,
+            current_usage=current_usage,
+        )
+
+    async def reset(self) -> None:
+        """Reset this limiter's state (for testing).
+
+        Clears all state for this limiter from both tables.
+        """
+        if not self._initialized or self._pool is None:
+            logger.warning(
+                "Cannot reset limiter '%s': not initialized",
+                self._group_id,
+            )
+            return
+
+        try:
+            async with self._pool.acquire() as conn:
+                # Delete from both tables
+                await conn.execute(
+                    f"DELETE FROM {self._full_table_name} WHERE group_id = $1",
+                    self._group_id,
+                )
+                await conn.execute(
+                    f"DELETE FROM {self._window_table_name} WHERE group_id = $1",
+                    self._group_id,
+                )
+            logger.debug(
+                "Reset limiter '%s'",
+                self._group_id,
+            )
+        except (OSError, ConnectionError, AttributeError) as e:
+            logger.warning(
+                "Failed to reset limiter '%s': %s",
+                self._group_id,
+                e,
+            )
+
+    async def reset_all(self) -> None:
+        """Reset all rate limiter data in PostgreSQL (for testing).
+
+        WARNING: This is destructive and will affect all limiters
+        using these tables, not just this limiter.
+        """
+        if not self._initialized or self._pool is None:
+            logger.warning(
+                "Cannot reset_all for limiter '%s': not initialized",
+                self._group_id,
+            )
+            return
+
+        try:
+            async with self._pool.acquire() as conn:
+                await conn.execute(f"TRUNCATE {self._full_table_name}")
+                await conn.execute(f"TRUNCATE {self._window_table_name}")
+            logger.info(
+                "Reset all rate limiters (truncated tables %s and %s)",
+                self._full_table_name,
+                self._window_table_name,
+            )
+        except (OSError, ConnectionError, AttributeError) as e:
+            logger.warning(
+                "Failed to reset_all for limiter '%s': %s",
+                self._group_id,
+                e,
+            )

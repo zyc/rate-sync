@@ -3,6 +3,8 @@
 Tests the reset_limiter, reset_all_limiters, and reset_backend_store functions.
 """
 
+import os
+
 import pytest
 
 from ratesync import (
@@ -288,18 +290,18 @@ async def test_reset_preserves_configuration(setup_memory_limiters):
 
 
 @pytest.mark.asyncio
+@pytest.mark.redis
+@pytest.mark.integration
 @pytest.mark.skipif(
-    True,  # Skip by default - requires Redis
-    reason="Requires Redis to be running",
+    not os.environ.get("REDIS_URL"),
+    reason="Set REDIS_URL to run Redis integration tests",
 )
 async def test_reset_with_redis_backend():
-    """Test that reset works with Redis backend.
+    """Test that reset works with Redis backend."""
+    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
-    This test is skipped by default as it requires Redis.
-    Run with: pytest -m "" tests/test_testing_utilities.py::test_reset_with_redis_backend
-    """
     # Arrange
-    configure_store("redis", strategy="redis", url="redis://localhost:6379/0")
+    configure_store("redis", strategy="redis", url=redis_url)
     configure_limiter(
         "redis_api",
         store_id="redis",

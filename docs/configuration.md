@@ -1,36 +1,25 @@
 # Configuration Guide
 
-This guide covers all configuration options for rate-sync, including TOML file configuration, programmatic setup, and environment variable expansion.
+rate-sync supports TOML file configuration, programmatic setup, or both.
 
-## Table of Contents
+## Configuration Methods
 
-- [Overview](#overview)
-- [TOML Configuration](#toml-configuration)
-- [Programmatic Configuration](#programmatic-configuration)
-- [Environment Variables](#environment-variables)
-- [Stores Configuration](#stores-configuration)
-- [Limiters Configuration](#limiters-configuration)
-- [Algorithms](#algorithms)
-- [Examples](#examples)
-
-## Overview
-
-rate-sync uses a two-level architecture:
-
-1. **Stores**: Define the coordination mechanism (Memory, Redis, PostgreSQL)
-2. **Limiters**: Define the rate limiting rules and reference a store
-
-This separation allows multiple limiters to share the same store connection.
+| Method | TOML | Programmatic |
+|--------|------|--------------|
+| Auto-loads on import | Yes | No |
+| Environment variable expansion | Yes | No |
+| Runtime modification | No | Yes |
+| Best for | Static config | Dynamic config |
 
 ## TOML Configuration
 
 ### File Location
 
-rate-sync automatically searches for configuration in this order:
+rate-sync searches for configuration in this order:
 
 1. `RATE_SYNC_CONFIG` environment variable
-2. `./rate-sync.toml` (current directory)
-3. `./config/rate-sync.toml` (config subdirectory)
+2. `./rate-sync.toml`
+3. `./config/rate-sync.toml`
 
 ### Basic Structure
 
@@ -43,166 +32,118 @@ engine = "memory"
 [limiters.api]
 store = "local"
 rate_per_second = 10.0
-timeout = 30.0
 ```
 
-### Complete Example
+### Environment Variable Expansion
 
 ```toml
-# =============================================================================
-# STORES - Coordination Mechanisms
-# =============================================================================
-
-# Development store (in-memory, single process)
-[stores.dev]
-engine = "memory"
-
-# Production store (Redis, distributed)
 [stores.prod]
 engine = "redis"
-url = "${REDIS_URL:-redis://localhost:6379/0}"
-password = "${REDIS_PASSWORD:-}"
-key_prefix = "ratelimit"
-pool_min_size = 2
-pool_max_size = 10
-
-# =============================================================================
-# LIMITERS - Rate Limiting Rules
-# =============================================================================
-
-# API rate limiting (token bucket)
-[limiters.api]
-store = "prod"
-algorithm = "token_bucket"
-rate_per_second = 100.0
-max_concurrent = 50
-timeout = 30.0
-
-# Authentication protection (sliding window)
-[limiters.login]
-store = "prod"
-algorithm = "sliding_window"
-limit = 5
-window_seconds = 300
-
-# External API (strict rate limit)
-[limiters.external_api]
-store = "prod"
-rate_per_second = 1.0
-timeout = 60.0
-fail_closed = true
+url = "${REDIS_URL}"                        # Required
+url = "${REDIS_URL:-redis://localhost:6379}" # With default
 ```
+
+---
 
 ## Programmatic Configuration
 
-### Basic Setup
-
 ```python
-from ratesync import configure_store, configure_limiter, acquire
+from ratesync import configure_store, configure_limiter, load_config
 
-# Configure store
+# Option 1: Programmatic
 configure_store("local", strategy="memory")
+configure_limiter("api", store_id="local", rate_per_second=10.0)
 
-# Configure limiter
-configure_limiter(
-    "api",
-    store_id="local",
-    rate_per_second=10.0,
-    timeout=30.0
-)
+# Option 2: Load TOML
+load_config("/path/to/config.toml")
 
-# Use
-await acquire("api")
-```
-
-### Loading Custom Config File
-
-```python
-from ratesync import load_config
-
-# Load from custom path
-load_config("/path/to/custom-config.toml")
-```
-
-### Mixed Configuration
-
-You can combine TOML and programmatic configuration:
-
-```python
-from ratesync import load_config, configure_limiter
-
-# Load base config from TOML
+# Option 3: Combine both
 load_config("rate-sync.toml")
-
-# Add/override limiters programmatically
-configure_limiter("dynamic_api", store_id="prod", rate_per_second=50.0)
+configure_limiter("dynamic", store_id="prod", rate_per_second=50.0)  # Override/extend
 ```
 
-## Environment Variables
-
-### Expansion Syntax
-
-rate-sync supports environment variable expansion in TOML files:
-
-```toml
-# Basic expansion
-url = "${REDIS_URL}"
-
-# With default value
-url = "${REDIS_URL:-redis://localhost:6379/0}"
-
-# In section names (dynamic limiter IDs)
-[limiters."${LIMITER_ID:-default}"]
-store = "prod"
-rate_per_second = "${RATE_LIMIT:-10.0}"
-```
-
-### Built-in Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `RATE_SYNC_CONFIG` | Custom config file path |
+---
 
 ## Stores Configuration
 
 ### Memory Engine
 
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `engine` | `str` | Required | `"memory"` |
+
 ```toml
-[stores.local]
+[stores.dev]
 engine = "memory"
 ```
 
-No additional options. Perfect for development and single-process apps.
+```python
+configure_store("dev", strategy="memory")
+```
 
 ### Redis Engine
 
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `engine` | `str` | Required | `"redis"` |
+| `url` | `str` | Required | Connection URL |
+| `db` | `int` | `0` | Database number (0-15) |
+| `password` | `str` | `None` | Auth password |
+| `key_prefix` | `str` | `"rate_limit"` | Key namespace |
+| `pool_min_size` | `int` | `2` | Min connections |
+| `pool_max_size` | `int` | `10` | Max connections |
+| `socket_timeout` | `float` | `5.0` | Socket timeout (sec) |
+| `socket_connect_timeout` | `float` | `5.0` | Connect timeout (sec) |
+| `timing_margin_ms` | `float` | `10.0` | Timing safety margin |
+
 ```toml
-[stores.redis]
+[stores.prod]
 engine = "redis"
-url = "redis://localhost:6379/0"        # Required
-db = 0                                   # Database number (0-15)
-password = ""                            # Optional password
-key_prefix = "rate_limit"                # Key prefix for namespacing
-pool_min_size = 2                        # Min connections
-pool_max_size = 10                       # Max connections
-timing_margin_ms = 10.0                  # Timing safety margin
-socket_timeout = 5.0                     # Socket timeout (seconds)
-socket_connect_timeout = 5.0             # Connection timeout (seconds)
+url = "${REDIS_URL:-redis://localhost:6379/0}"
+pool_max_size = 20
+key_prefix = "myapp:ratelimit"
+```
+
+```python
+configure_store(
+    "prod",
+    strategy="redis",
+    url="redis://localhost:6379/0",
+    pool_max_size=20,
+)
 ```
 
 ### PostgreSQL Engine
 
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `engine` | `str` | Required | `"postgres"` |
+| `url` | `str` | Required | Connection URL |
+| `table_name` | `str` | `"rate_limiter_state"` | State table name |
+| `schema_name` | `str` | `"public"` | Schema name |
+| `auto_create` | `bool` | `False` | Create table on init |
+| `pool_min_size` | `int` | `2` | Min connections |
+| `pool_max_size` | `int` | `10` | Max connections |
+| `timing_margin_ms` | `float` | `10.0` | Timing safety margin |
+
 ```toml
-[stores.postgres]
+[stores.db]
 engine = "postgres"
-url = "postgresql://user:pass@localhost:5432/db"  # Required
-table_name = "rate_limiter_state"        # Table name
-schema_name = "public"                   # Schema name
-auto_create = false                      # Create table if missing
-pool_min_size = 2                        # Min connections
-pool_max_size = 10                       # Max connections
-timing_margin_ms = 10.0                  # Timing safety margin
+url = "${DATABASE_URL}"
+auto_create = true
+pool_max_size = 10
 ```
+
+```python
+configure_store(
+    "db",
+    strategy="postgres",
+    url="postgresql://user:pass@localhost/db",
+    auto_create=True,
+)
+```
+
+---
 
 ## Limiters Configuration
 
@@ -210,80 +151,76 @@ timing_margin_ms = 10.0                  # Timing safety margin
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `store` | string | Required | Store ID to use |
-| `algorithm` | string | `"token_bucket"` | Algorithm type |
-| `timeout` | float | None | Default timeout in seconds |
-| `fail_closed` | bool | false | Block on backend failure |
+| `store` | `str` | Required | Store ID to use |
+| `algorithm` | `str` | `"token_bucket"` | Algorithm type |
+| `timeout` | `float` | `None` | Default timeout (sec) |
+| `fail_closed` | `bool` | `False` | Block on backend failure |
 
-### Token Bucket Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `rate_per_second` | float | None | Max operations per second |
-| `max_concurrent` | int | None | Max simultaneous operations |
-
-At least one of `rate_per_second` or `max_concurrent` must be specified.
-
-### Sliding Window Options
+### Token Bucket Algorithm
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `limit` | int | Required | Max requests in window |
-| `window_seconds` | int | Required | Window size in seconds |
+| `rate_per_second` | `float` | `None` | Max operations/sec |
+| `max_concurrent` | `int` | `None` | Max simultaneous ops |
 
-**Note:** Sliding window requires the Redis engine.
-
-## Algorithms
-
-### Token Bucket
-
-The token bucket algorithm controls throughput by enforcing a minimum interval between operations.
+At least one of `rate_per_second` or `max_concurrent` required.
 
 ```toml
+# TOML
 [limiters.api]
-store = "redis"
-algorithm = "token_bucket"    # Default, can be omitted
-rate_per_second = 10.0        # 10 requests per second max
+store = "prod"
+rate_per_second = 100.0
+max_concurrent = 50
+timeout = 30.0
 ```
 
-**Use cases:**
-- API rate limiting
-- External API integration
-- General throughput control
-
-**Combined with concurrency:**
-
-```toml
-[limiters.production_api]
-store = "redis"
-rate_per_second = 100.0       # Max throughput
-max_concurrent = 50           # Max parallelism
+```python
+# Programmatic
+configure_limiter(
+    "api",
+    store_id="prod",
+    rate_per_second=100.0,
+    max_concurrent=50,
+    timeout=30.0,
+)
 ```
 
-### Sliding Window
+### Sliding Window Algorithm
 
-The sliding window algorithm counts requests within a time window. Better suited for authentication protection where you want to limit attempts over a longer period.
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `limit` | `int` | Required | Max requests in window |
+| `window_seconds` | `int` | Required | Window size (sec) |
+
+Requires Redis engine.
 
 ```toml
+# TOML
 [limiters.login]
-store = "redis"
+store = "prod"
 algorithm = "sliding_window"
-limit = 5                     # 5 attempts
-window_seconds = 300          # Per 5 minutes
+limit = 5
+window_seconds = 300
 ```
 
-**Use cases:**
-- Login attempt limiting
-- Password reset protection
-- OTP verification limiting
-- Abuse prevention
+```python
+# Programmatic
+configure_limiter(
+    "login",
+    store_id="prod",
+    algorithm="sliding_window",
+    limit=5,
+    window_seconds=300,
+)
+```
 
-## Examples
+---
 
-### Development Configuration
+## Configuration Recipes
+
+### Development Setup
 
 ```toml
-# Simple development setup
 [stores.dev]
 engine = "memory"
 
@@ -292,30 +229,26 @@ store = "dev"
 rate_per_second = 100.0
 ```
 
-### Production Configuration
+### Production Setup
 
 ```toml
-# Production with Redis
 [stores.prod]
 engine = "redis"
 url = "${REDIS_URL}"
 pool_max_size = 20
 
-# Main API limiter
 [limiters.api]
 store = "prod"
 rate_per_second = 1000.0
 max_concurrent = 200
 timeout = 30.0
 
-# External API with strict limits
 [limiters.partner_api]
 store = "prod"
 rate_per_second = 10.0
 timeout = 60.0
 fail_closed = true
 
-# Auth protection
 [limiters.login]
 store = "prod"
 algorithm = "sliding_window"
@@ -323,19 +256,17 @@ limit = 5
 window_seconds = 300
 ```
 
-### Multi-Tenant Configuration
+### Multi-Tenant Setup
 
 ```toml
 [stores.shared]
 engine = "redis"
 url = "${REDIS_URL}"
 
-# Base limiter for cloning
 [limiters.tenant_base]
 store = "shared"
 rate_per_second = 10.0
 
-# Premium tier
 [limiters.tenant_premium]
 store = "shared"
 rate_per_second = 100.0
@@ -347,15 +278,14 @@ from ratesync import clone_limiter, acquire
 # Clone for specific tenant
 clone_limiter("tenant_base", f"tenant:{tenant_id}")
 
-# Use tenant-specific limiter
+# Use
 async with acquire(f"tenant:{tenant_id}"):
     response = await process_request()
 ```
 
-### Environment-Based Configuration
+### Environment-Based Switching
 
 ```toml
-# Switch store based on environment
 [stores.main]
 engine = "${RATE_LIMIT_ENGINE:-memory}"
 url = "${RATE_LIMIT_URL:-}"
@@ -363,13 +293,11 @@ url = "${RATE_LIMIT_URL:-}"
 [limiters.api]
 store = "main"
 rate_per_second = "${API_RATE_LIMIT:-10.0}"
-timeout = "${API_TIMEOUT:-30.0}"
 ```
 
 ```bash
 # Development
 export RATE_LIMIT_ENGINE=memory
-export API_RATE_LIMIT=100.0
 
 # Production
 export RATE_LIMIT_ENGINE=redis
@@ -377,8 +305,36 @@ export RATE_LIMIT_URL=redis://prod-redis:6379/0
 export API_RATE_LIMIT=1000.0
 ```
 
+---
+
+## Algorithm Comparison
+
+| Aspect | Token Bucket | Sliding Window |
+|--------|--------------|----------------|
+| Controls | Throughput, parallelism | Request count |
+| Parameters | `rate_per_second`, `max_concurrent` | `limit`, `window_seconds` |
+| Engine support | All | Redis only |
+| Best for | API rate limiting | Auth protection |
+| Burst handling | Allows controlled bursts | Strict count enforcement |
+
+### When to Use Token Bucket
+
+- API throughput control (req/sec)
+- External API integration
+- Connection pooling
+- General rate limiting
+
+### When to Use Sliding Window
+
+- Login attempt limiting
+- Password reset protection
+- OTP verification
+- Abuse prevention with strict counts
+
+---
+
 ## See Also
 
-- [API Reference](api-reference.md) - Complete function signatures
-- [Engines](engines/) - Detailed engine documentation
-- [FastAPI Integration](fastapi-integration.md) - Web framework integration
+- [API Reference](api-reference.md)
+- [FastAPI Integration](fastapi-integration.md)
+- [Engine Documentation](engines/)

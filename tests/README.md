@@ -1,93 +1,91 @@
-# Testes - rate-limiter
+# Tests
 
-## Política de Testes na Pipeline CI/CD
-
-**IMPORTANTE**: A pipeline CI/CD executa **apenas testes unitários** que não dependem de infraestrutura externa.
-
-### ❌ Não Rodam na Pipeline
-
-Os seguintes tipos de teste **NÃO** rodam na pipeline CI/CD:
-
-- Testes de integração com Redis/cache
-- Testes de integração com PostgreSQL
-- Testes end-to-end (e2e)
-- Testes que dependem de serviços externos
-- Testes que requerem Docker/containers
-
-### ✅ Rodam na Pipeline
-
-Apenas testes unitários puros:
-
-- Testes de algoritmos de rate limiting com mocks
-- Testes de lógica de janelas/buckets
-- Testes de validação de regras
-- Testes com stubs de cache
-
-## Como Executar Testes Localmente
-
-### Todos os Testes (incluindo integração)
+## Running Tests
 
 ```bash
+# Unit tests only (CI default)
+poetry run pytest -m "not integration"
+
+# All tests (requires infrastructure)
 poetry run pytest
+
+# With coverage
+poetry run pytest --cov=ratesync --cov-report=term
 ```
 
-### Apenas Testes Unitários (CI/CD)
+## Test Markers
+
+| Marker | Description | Requires |
+|--------|-------------|----------|
+| (none) | Unit tests | Nothing |
+| `@pytest.mark.compliance` | Engine compliance tests | Varies |
+| `@pytest.mark.integration` | Integration tests | Redis/PostgreSQL |
+| `@pytest.mark.redis` | Redis-specific tests | Redis |
+| `@pytest.mark.postgres` | PostgreSQL-specific tests | PostgreSQL |
+| `@pytest.mark.slow` | Slow tests | Nothing |
+
+## Infrastructure
+
+### Quick Start
 
 ```bash
-poetry run pytest -m "not integration and not e2e"
+docker compose up -d                 # Start default versions
+docker compose --profile all up -d   # Start all versions
 ```
 
-### Apenas Testes de Integração
+### Multi-Version Testing
 
 ```bash
-poetry run pytest -m integration
+# Test specific versions
+docker compose --profile redis-6 up -d   # Redis 6
+docker compose --profile pg-14 up -d     # PostgreSQL 14
+docker compose --profile pg-15 up -d     # PostgreSQL 15
+
+# Environment variables
+export REDIS_URL="redis://localhost:6379/0"
+export POSTGRES_URL="postgresql://postgres:postgres@localhost:5432/ratesync"
+
+# Run integration tests
+poetry run pytest -m redis
+poetry run pytest -m postgres
 ```
 
-### Apenas Testes E2E
+### Supported Versions
 
-```bash
-poetry run pytest -m e2e
-```
+| Backend | Versions Tested | Default |
+|---------|-----------------|---------|
+| Redis | 6, 7 | 7 |
+| PostgreSQL | 14, 15, 16 | 16 |
 
-## Marcação de Testes
+## Test Structure
 
-Use os decoradores pytest para marcar seus testes:
+| Directory | Purpose |
+|-----------|---------|
+| `tests/compliance/` | Engine compliance tests (all engines) |
+| `tests/engines/` | Engine-specific tests |
+| `tests/domain/` | Domain layer tests |
+| `tests/integration/` | Integration tests |
+| `tests/manual/` | Manual/exploratory tests |
+
+## Adding Tests
+
+### Compliance Tests (engine-agnostic)
 
 ```python
-import pytest
-
-# Teste unitário (sem marcação necessária)
-def test_calculo_limite():
-    assert calculate_rate(window, requests) == expected
-
-# Teste de integração (requer Redis/PostgreSQL)
-@pytest.mark.integration
-def test_rate_limit_com_cache():
-    # ...
-
-# Teste E2E (requer ambiente completo)
-@pytest.mark.e2e
-def test_fluxo_completo_com_carga():
-    # ...
+# tests/compliance/test_*.py
+@pytest.mark.parametrize("engine_name", get_unit_test_engines())
+async def test_something(self, engine_name: str, get_factory):
+    factory = get_factory(engine_name)
+    limiter = await factory(rate_per_second=10.0)
+    # Test behavior...
 ```
 
-## Infraestrutura para Testes
+### Engine-Specific Tests
 
-Para rodar testes de integração/e2e localmente:
-
-1. Inicie o ambiente Docker:
-   ```bash
-   cd ../environment-local
-   docker compose up -d
-   ```
-
-2. Execute os testes:
-   ```bash
-   poetry run pytest
-   ```
-
-3. Desligue o ambiente:
-   ```bash
-   cd ../environment-local
-   docker compose down
-   ```
+```python
+# tests/engines/test_*_specific.py
+@pytest.mark.redis
+@pytest.mark.integration
+async def test_redis_specific_feature():
+    ...
+```

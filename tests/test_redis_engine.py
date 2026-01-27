@@ -103,9 +103,8 @@ class TestRedisEngineValidation:
                 group_id="test",
             )
 
-        assert "At least one of rate_per_second or max_concurrent must be specified" in str(
-            exc_info.value
-        )
+        assert "At least one of" in str(exc_info.value)
+        assert "must be specified" in str(exc_info.value)
 
     def test_negative_max_concurrent_raises_error(self):
         """Test that negative max_concurrent is rejected."""

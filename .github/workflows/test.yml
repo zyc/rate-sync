@@ -7,7 +7,10 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  # ===========================================================================
+  # Unit Tests - Run on all Python versions
+  # ===========================================================================
+  unit:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -42,7 +45,7 @@ jobs:
       - name: Install project
         run: poetry install --no-interaction
 
-      - name: Run tests (unit only)
+      - name: Run unit tests
         run: poetry run pytest -m "not integration" --cov=ratesync --cov-report=xml --cov-report=term
 
       - name: Upload coverage to Codecov
@@ -52,6 +55,115 @@ jobs:
           file: ./coverage.xml
           fail_ci_if_error: false
 
+  # ===========================================================================
+  # Integration Tests - Redis versions
+  # ===========================================================================
+  integration-redis:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        redis-version: ["6", "7"]
+
+    services:
+      redis:
+        image: redis:${{ matrix.redis-version }}-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-3.12-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+
+      - name: Install project
+        run: poetry install --no-interaction
+
+      - name: Run Redis integration tests
+        env:
+          REDIS_URL: redis://localhost:6379/0
+        run: poetry run pytest -m redis -v --tb=short
+
+  # ===========================================================================
+  # Integration Tests - PostgreSQL versions
+  # ===========================================================================
+  integration-postgres:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres-version: ["14", "15", "16"]
+
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}-alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ratesync
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-3.12-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+
+      - name: Install project
+        run: poetry install --no-interaction
+
+      - name: Run PostgreSQL integration tests
+        env:
+          POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/ratesync
+        run: poetry run pytest -m postgres -v --tb=short
+
+  # ===========================================================================
+  # Linting
+  # ===========================================================================
   lint:
     runs-on: ubuntu-latest
     steps:
