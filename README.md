@@ -9,6 +9,73 @@ Distributed rate limiting for Python with Redis, PostgreSQL, or in-memory backen
 
 ---
 
+## What It Solves
+
+### Brute force and credential stuffing on your auth endpoints
+
+Attackers try thousands of password combinations. A sliding window limiter on your login endpoint stops them — and composite limiting blocks both single-IP attacks and distributed botnets hitting the same account.
+
+```toml
+[limiters.auth_credential]
+algorithm = "sliding_window"
+limit = 5                # 5 attempts
+window_seconds = 300     # per 5 minutes
+```
+
+> **Deep dive:** [Authentication Protection](https://github.com/zyc/rate-sync/blob/main/docs/patterns/authentication-protection.md) &middot; [Abuse Prevention](https://github.com/zyc/rate-sync/blob/main/docs/patterns/abuse-prevention.md)
+
+### Different API quotas for free, pro, and enterprise customers
+
+Your free tier gets 100 requests/hour. Pro gets 1,000. Enterprise gets 10,000. Define each tier as a limiter and clone it per user — rate-sync handles the rest.
+
+```python
+limiter = await get_or_clone_limiter(f"api_{tier}", api_key)
+```
+
+> **Deep dive:** [API Tiering](https://github.com/zyc/rate-sync/blob/main/docs/patterns/api-tiering.md)
+
+### Background workers overwhelming third-party APIs
+
+You have 20 Celery workers calling the Stripe API, which allows 100 req/s. Without coordination, your workers exceed the limit and get throttled. rate-sync coordinates across all workers through a shared Redis backend.
+
+```toml
+[limiters.stripe_api]
+store = "redis"
+rate_per_second = 90.0   # stay under Stripe's 100/s limit
+max_concurrent = 10       # max 10 in-flight calls
+```
+
+> **Deep dive:** [Background Jobs](https://github.com/zyc/rate-sync/blob/main/docs/patterns/background-jobs.md)
+
+### Rate limits that actually work across multiple servers
+
+In-memory counters reset when a process restarts and can't coordinate across instances. rate-sync uses Redis or PostgreSQL as a shared backend, so limits are enforced consistently across your entire fleet.
+
+```toml
+[stores.redis]
+engine = "redis"
+url = "${REDIS_URL}"
+
+[limiters.api]
+store = "redis"          # all instances share this
+rate_per_second = 100.0
+```
+
+> **Deep dive:** [Production Deployment](https://github.com/zyc/rate-sync/blob/main/docs/patterns/production-deployment.md)
+
+### Knowing what's being blocked and why
+
+Rate limiting without observability is flying blind. rate-sync exposes built-in metrics (acquisitions, wait times, timeouts) and integrates with Prometheus for dashboards and alerting.
+
+```python
+state = await limiter.get_state()
+# → RateLimiterState(allowed=True, remaining=42, reset_at=1706367600)
+```
+
+> **Deep dive:** [Observability](https://github.com/zyc/rate-sync/blob/main/docs/observability.md) &middot; [Monitoring Patterns](https://github.com/zyc/rate-sync/blob/main/docs/patterns/monitoring.md)
+
+---
+
 ## Features
 
 - **Declarative configuration** - Define limits in TOML, use anywhere
@@ -174,8 +241,11 @@ await acquire("api")
 ### Patterns
 
 - [Authentication Protection](https://github.com/zyc/rate-sync/blob/main/docs/patterns/authentication-protection.md)
+- [Abuse Prevention](https://github.com/zyc/rate-sync/blob/main/docs/patterns/abuse-prevention.md)
 - [API Tiering](https://github.com/zyc/rate-sync/blob/main/docs/patterns/api-tiering.md)
 - [Background Jobs](https://github.com/zyc/rate-sync/blob/main/docs/patterns/background-jobs.md)
+- [Monitoring](https://github.com/zyc/rate-sync/blob/main/docs/patterns/monitoring.md)
+- [Testing](https://github.com/zyc/rate-sync/blob/main/docs/patterns/testing.md)
 - [Production Deployment](https://github.com/zyc/rate-sync/blob/main/docs/patterns/production-deployment.md)
 
 ## Contributing
