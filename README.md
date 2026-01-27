@@ -1,11 +1,17 @@
-# rate-sync
+<p align="center">
+  <img src="https://raw.githubusercontent.com/zyc/rate-sync/main/docs/assets/logo.png" alt="rate-sync" width="200">
+</p>
 
-[![PyPI version](https://img.shields.io/pypi/v/rate-sync.svg)](https://pypi.org/project/rate-sync/)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/github/actions/workflow/status/zyc/rate-sync/test.yml?branch=main&label=tests)](https://github.com/zyc/rate-sync/actions)
+<h1 align="center">rate-sync</h1>
 
-Distributed rate limiting for Python with Redis, PostgreSQL, or in-memory backends.
+<p align="center">
+  <a href="https://pypi.org/project/rate-sync/"><img src="https://img.shields.io/pypi/v/rate-sync.svg" alt="PyPI version"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
+  <a href="https://github.com/zyc/rate-sync/actions"><img src="https://img.shields.io/github/actions/workflow/status/zyc/rate-sync/test.yml?branch=main&label=tests" alt="Tests"></a>
+</p>
+
+<p align="center">Distributed rate limiting for Python with Redis, PostgreSQL, or in-memory backends.</p>
 
 ---
 
