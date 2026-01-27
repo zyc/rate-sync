@@ -187,7 +187,7 @@ poetry install
 poetry run pytest
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](https://github.com/zyc/rate-sync/blob/main/CONTRIBUTING.md) for guidelines.
 
 ## License
 
