@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-01-27
+
+### Changed
+- Migrate repository from `zyc/rate-sync` to `rate-sync/rate-sync` organization
+- Update all project URLs, badges, and documentation links to new org
+- Add project logo (PNG, SVG) and social preview banner
+- Add "What It Solves" section to README with real-world use case scenarios
+
 ## [0.2.1] - 2025-01-27
 
 ### Changed
