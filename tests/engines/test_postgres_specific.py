@@ -84,9 +84,7 @@ class TestPostgresEngineSpecific:
             conn = await asyncpg.connect(POSTGRES_URL)
             try:
                 await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}"')
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "public"."{table_name}_window"'
-                )
+                await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}_window"')
             finally:
                 await conn.close()
 
@@ -140,12 +138,8 @@ class TestPostgresEngineSpecific:
             # Cleanup
             conn = await asyncpg.connect(POSTGRES_URL)
             try:
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "test_ratesync"."{table_name}"'
-                )
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "test_ratesync"."{table_name}_window"'
-                )
+                await conn.execute(f'DROP TABLE IF EXISTS "test_ratesync"."{table_name}"')
+                await conn.execute(f'DROP TABLE IF EXISTS "test_ratesync"."{table_name}_window"')
             finally:
                 await conn.close()
 
@@ -192,9 +186,7 @@ class TestPostgresEngineSpecific:
             conn = await asyncpg.connect(POSTGRES_URL)
             try:
                 await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}"')
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "public"."{table_name}_window"'
-                )
+                await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}_window"')
             finally:
                 await conn.close()
 
@@ -240,9 +232,7 @@ class TestPostgresEngineSpecific:
             conn = await asyncpg.connect(POSTGRES_URL)
             try:
                 await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}"')
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "public"."{table_name}_window"'
-                )
+                await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}_window"')
             finally:
                 await conn.close()
 
@@ -346,9 +336,7 @@ class TestPostgresEngineSpecific:
             conn = await asyncpg.connect(POSTGRES_URL)
             try:
                 await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}"')
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "public"."{table_name}_window"'
-                )
+                await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}_window"')
             finally:
                 await conn.close()
 
@@ -387,9 +375,7 @@ class TestPostgresEngineSpecific:
             conn = await asyncpg.connect(POSTGRES_URL)
             try:
                 await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}"')
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "public"."{table_name}_window"'
-                )
+                await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}_window"')
             finally:
                 await conn.close()
 
@@ -432,9 +418,7 @@ class TestPostgresEngineSpecific:
             conn = await asyncpg.connect(POSTGRES_URL)
             try:
                 await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}"')
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "public"."{table_name}_window"'
-                )
+                await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}_window"')
             finally:
                 await conn.close()
 
@@ -524,9 +508,7 @@ class TestPostgresEngineSpecific:
             conn = await asyncpg.connect(POSTGRES_URL)
             try:
                 await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}"')
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "public"."{table_name}_window"'
-                )
+                await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}_window"')
             finally:
                 await conn.close()
 
@@ -604,9 +586,7 @@ class TestPostgresEngineSpecific:
             conn = await asyncpg.connect(POSTGRES_URL)
             try:
                 await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}"')
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "public"."{table_name}_window"'
-                )
+                await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}_window"')
             finally:
                 await conn.close()
 
@@ -675,8 +655,6 @@ class TestPostgresEngineSpecific:
             conn = await asyncpg.connect(POSTGRES_URL)
             try:
                 await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}"')
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "public"."{table_name}_window"'
-                )
+                await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}_window"')
             finally:
                 await conn.close()

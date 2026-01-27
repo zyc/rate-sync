@@ -246,9 +246,7 @@ async def postgres_engine_factory(postgres_url: str) -> AsyncIterator[EngineFact
             conn = await asyncpg.connect(postgres_url)
             for table_name in table_names:
                 await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}"')
-                await conn.execute(
-                    f'DROP TABLE IF EXISTS "public"."{table_name}_window"'
-                )
+                await conn.execute(f'DROP TABLE IF EXISTS "public"."{table_name}_window"')
             await conn.close()
         except Exception:
             pass

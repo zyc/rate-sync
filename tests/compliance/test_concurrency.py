@@ -29,9 +29,7 @@ class TestConcurrencyLimiting:
     """Test concurrency limiting compliance."""
 
     @pytest.mark.parametrize("engine_name", CONCURRENCY_UNIT_ENGINES)
-    async def test_enforces_max_concurrent(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_enforces_max_concurrent(self, engine_name: str, get_factory) -> None:
         """Only max_concurrent operations should run simultaneously."""
         factory: EngineFactory = get_factory(engine_name)
         max_concurrent = 2
@@ -63,9 +61,7 @@ class TestConcurrencyLimiting:
         assert blocked is True, "Third should have been blocked"
 
     @pytest.mark.parametrize("engine_name", CONCURRENCY_UNIT_ENGINES)
-    async def test_release_allows_new_acquire(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_release_allows_new_acquire(self, engine_name: str, get_factory) -> None:
         """release() should free slot for new acquires."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=1)
@@ -78,9 +74,7 @@ class TestConcurrencyLimiting:
         assert result is True
 
     @pytest.mark.parametrize("engine_name", CONCURRENCY_UNIT_ENGINES)
-    async def test_acquire_context_auto_releases(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_acquire_context_auto_releases(self, engine_name: str, get_factory) -> None:
         """acquire_context() should auto-release on exit."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=1)
@@ -109,9 +103,7 @@ class TestConcurrencyLimiting:
         assert result is True
 
     @pytest.mark.parametrize("engine_name", CONCURRENCY_UNIT_ENGINES)
-    async def test_max_concurrent_property(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_max_concurrent_property(self, engine_name: str, get_factory) -> None:
         """max_concurrent property returns configured value."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=7)
@@ -119,9 +111,7 @@ class TestConcurrencyLimiting:
         assert limiter.max_concurrent == 7
 
     @pytest.mark.parametrize("engine_name", CONCURRENCY_UNIT_ENGINES)
-    async def test_concurrent_acquire_wait(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_concurrent_acquire_wait(self, engine_name: str, get_factory) -> None:
         """acquire() blocks until slot available when at limit."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=1)
@@ -165,9 +155,7 @@ class TestConcurrencyLimiting:
         assert "max_concurrent" in str(exc_info.value)
 
     @pytest.mark.parametrize("engine_name", CONCURRENCY_UNIT_ENGINES)
-    async def test_zero_max_concurrent_raises_error(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_zero_max_concurrent_raises_error(self, engine_name: str, get_factory) -> None:
         """Zero max_concurrent should raise ValueError."""
         if engine_name != "memory":
             pytest.skip("Direct instantiation only for memory engine")
@@ -237,9 +225,7 @@ class TestConcurrencyLimiting:
             await limiter.release()
 
     @pytest.mark.parametrize("engine_name", CONCURRENCY_UNIT_ENGINES)
-    async def test_release_without_acquire_is_safe(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_release_without_acquire_is_safe(self, engine_name: str, get_factory) -> None:
         """release() without acquire should not cause issues (may over-release)."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=2)
@@ -362,9 +348,7 @@ class TestConcurrencyLimiting:
         assert acquired_order == [1, 2]
 
     @pytest.mark.parametrize("engine_name", CONCURRENCY_UNIT_ENGINES)
-    async def test_high_concurrency_stress(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_high_concurrency_stress(self, engine_name: str, get_factory) -> None:
         """Stress test with many concurrent operations."""
         factory: EngineFactory = get_factory(engine_name)
         max_concurrent = 5
@@ -393,6 +377,6 @@ class TestConcurrencyLimiting:
         await asyncio.gather(*[task() for _ in range(50)])
 
         assert violations == 0, f"Concurrency limit violated {violations} times"
-        assert max_active_seen <= max_concurrent, (
-            f"Max active {max_active_seen} exceeded limit {max_concurrent}"
-        )
+        assert (
+            max_active_seen <= max_concurrent
+        ), f"Max active {max_active_seen} exceeded limit {max_concurrent}"

@@ -307,7 +307,9 @@ class RedisRateLimiter(RateLimiter):
         # Determine algorithm
         if has_token_bucket:
             self._algorithm = "token_bucket"
-            self._interval = (1.0 / rate_per_second - self._timing_margin_s) if rate_per_second else -1
+            self._interval = (
+                (1.0 / rate_per_second - self._timing_margin_s) if rate_per_second else -1
+            )
         elif has_sliding_window:
             self._algorithm = "sliding_window"
             self._interval = -1
@@ -372,7 +374,9 @@ class RedisRateLimiter(RateLimiter):
 
             # Register Lua scripts based on algorithm
             self._acquire_script = self._client.register_script(ACQUIRE_TOKEN_BUCKET_SCRIPT)
-            self._sliding_window_script = self._client.register_script(ACQUIRE_SLIDING_WINDOW_SCRIPT)
+            self._sliding_window_script = self._client.register_script(
+                ACQUIRE_SLIDING_WINDOW_SCRIPT
+            )
             self._release_script = self._client.register_script(RELEASE_SCRIPT)
 
             logger.info(

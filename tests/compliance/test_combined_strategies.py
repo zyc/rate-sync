@@ -23,8 +23,7 @@ pytestmark = [pytest.mark.compliance, pytest.mark.asyncio]
 COMBINED_RATE_CONCURRENCY_ENGINES = [
     e
     for e in get_unit_test_engines()
-    if ENGINE_CAPABILITIES[e].supports_token_bucket
-    and ENGINE_CAPABILITIES[e].supports_concurrency
+    if ENGINE_CAPABILITIES[e].supports_token_bucket and ENGINE_CAPABILITIES[e].supports_concurrency
 ]
 
 # Engines that support both sliding_window and concurrency
@@ -40,9 +39,7 @@ class TestCombinedStrategies:
     """Test combined rate + concurrency limiting."""
 
     @pytest.mark.parametrize("engine_name", COMBINED_RATE_CONCURRENCY_ENGINES)
-    async def test_rate_plus_concurrency_both_enforced(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_rate_plus_concurrency_both_enforced(self, engine_name: str, get_factory) -> None:
         """Both rate and concurrency limits should be enforced."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(

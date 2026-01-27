@@ -18,9 +18,7 @@ from compliance.utils import (
 pytestmark = [pytest.mark.compliance, pytest.mark.asyncio]
 
 # Engines that support get_state and don't require infrastructure (for unit tests)
-STATE_UNIT_ENGINES = [
-    e for e in get_engines_with("get_state") if e in get_unit_test_engines()
-]
+STATE_UNIT_ENGINES = [e for e in get_engines_with("get_state") if e in get_unit_test_engines()]
 
 # All engines that support get_state (includes Redis/PostgreSQL for integration tests)
 STATE_CAPABLE_ENGINES = get_engines_with("get_state")
@@ -30,9 +28,7 @@ class TestStateIntrospection:
     """Test state introspection compliance."""
 
     @pytest.mark.parametrize("engine_name", STATE_CAPABLE_ENGINES)
-    async def test_get_state_returns_correct_type(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_get_state_returns_correct_type(self, engine_name: str, get_factory) -> None:
         """get_state() returns LimiterState."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)
@@ -41,9 +37,7 @@ class TestStateIntrospection:
         assert isinstance(state, LimiterState)
 
     @pytest.mark.parametrize("engine_name", STATE_CAPABLE_ENGINES)
-    async def test_initial_state_is_allowed(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_initial_state_is_allowed(self, engine_name: str, get_factory) -> None:
         """Initial state should show allowed=True and remaining > 0."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(limit=5, window_seconds=60)
@@ -54,9 +48,7 @@ class TestStateIntrospection:
         assert state.current_usage == 0
 
     @pytest.mark.parametrize("engine_name", STATE_CAPABLE_ENGINES)
-    async def test_state_updates_after_acquire(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_state_updates_after_acquire(self, engine_name: str, get_factory) -> None:
         """State should reflect acquisitions."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(limit=5, window_seconds=60)
@@ -75,9 +67,7 @@ class TestStateIntrospection:
         assert state_after.remaining < remaining_before
 
     @pytest.mark.parametrize("engine_name", STATE_UNIT_ENGINES)
-    async def test_state_shows_not_allowed_at_limit(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_state_shows_not_allowed_at_limit(self, engine_name: str, get_factory) -> None:
         """State should show allowed=False when limit reached.
 
         Note: This test currently only runs on memory engine due to a known issue
@@ -97,9 +87,7 @@ class TestStateIntrospection:
         assert state.current_usage == 2
 
     @pytest.mark.parametrize("engine_name", STATE_CAPABLE_ENGINES)
-    async def test_state_reset_at_is_future_timestamp(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_state_reset_at_is_future_timestamp(self, engine_name: str, get_factory) -> None:
         """reset_at should be a future timestamp."""
         import time
 
@@ -114,9 +102,7 @@ class TestStateIntrospection:
         assert state.reset_at > now
 
     @pytest.mark.parametrize("engine_name", STATE_CAPABLE_ENGINES)
-    async def test_get_state_does_not_consume_slots(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_get_state_does_not_consume_slots(self, engine_name: str, get_factory) -> None:
         """get_state() should be read-only - not consume any slots."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(limit=2, window_seconds=60)
@@ -131,9 +117,7 @@ class TestStateIntrospection:
         assert state.current_usage == 0
 
     @pytest.mark.parametrize("engine_name", STATE_CAPABLE_ENGINES)
-    async def test_get_state_with_token_bucket(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_get_state_with_token_bucket(self, engine_name: str, get_factory) -> None:
         """get_state() works with token bucket algorithm."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)

@@ -22,9 +22,7 @@ class TestResourceCleanup:
     """Test resource cleanup compliance."""
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_reset_clears_rate_limit_state(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_reset_clears_rate_limit_state(self, engine_name: str, get_factory) -> None:
         """reset() clears rate limit state, allowing immediate acquire."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=1.0)  # Slow rate
@@ -44,9 +42,7 @@ class TestResourceCleanup:
         assert result is True, "Reset should clear rate limit state"
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_reset_clears_sliding_window_state(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_reset_clears_sliding_window_state(self, engine_name: str, get_factory) -> None:
         """reset() clears sliding window state."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(limit=2, window_seconds=60)
@@ -67,9 +63,7 @@ class TestResourceCleanup:
         assert result is True, "Reset should clear window state"
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_reset_clears_concurrency_state(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_reset_clears_concurrency_state(self, engine_name: str, get_factory) -> None:
         """reset() clears concurrency state."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=1)
@@ -89,9 +83,7 @@ class TestResourceCleanup:
         assert result is True, "Reset should clear concurrency state"
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_reset_clears_metrics(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_reset_clears_metrics(self, engine_name: str, get_factory) -> None:
         """reset() clears metrics."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=100.0)
@@ -111,9 +103,7 @@ class TestResourceCleanup:
         assert metrics_after.total_acquisitions == 0
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_reset_is_idempotent(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_reset_is_idempotent(self, engine_name: str, get_factory) -> None:
         """reset() can be called multiple times without error."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)
@@ -127,9 +117,7 @@ class TestResourceCleanup:
         assert result is True
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_usable_after_reset(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_usable_after_reset(self, engine_name: str, get_factory) -> None:
         """Limiter is fully usable after reset."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=100.0, max_concurrent=2)
@@ -156,9 +144,7 @@ class TestDisconnect:
     """Test disconnect/cleanup compliance."""
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_disconnect_is_idempotent(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_disconnect_is_idempotent(self, engine_name: str, get_factory) -> None:
         """disconnect() can be called multiple times without error."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)
@@ -170,9 +156,7 @@ class TestDisconnect:
             await limiter.disconnect()
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_reset_preserves_configuration(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_reset_preserves_configuration(self, engine_name: str, get_factory) -> None:
         """reset() should preserve limiter configuration."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(
@@ -195,9 +179,7 @@ class TestDisconnect:
         assert limiter.group_id == "test_config"
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_reset_while_holding_slots(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_reset_while_holding_slots(self, engine_name: str, get_factory) -> None:
         """reset() while holding concurrency slots should release them."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=2)
@@ -224,9 +206,7 @@ class TestResetAll:
     """Test reset_all method compliance."""
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_reset_all_clears_state(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_reset_all_clears_state(self, engine_name: str, get_factory) -> None:
         """reset_all() clears all limiter state."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=1.0)
@@ -247,9 +227,7 @@ class TestResetAll:
             assert result is True
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_reset_all_is_idempotent(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_reset_all_is_idempotent(self, engine_name: str, get_factory) -> None:
         """reset_all() can be called multiple times without error."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)

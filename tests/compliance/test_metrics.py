@@ -27,9 +27,7 @@ class TestMetricsTracking:
     """Test metrics compliance."""
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_get_metrics_returns_correct_type(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_get_metrics_returns_correct_type(self, engine_name: str, get_factory) -> None:
         """get_metrics() returns RateLimiterMetrics."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)
@@ -38,9 +36,7 @@ class TestMetricsTracking:
         assert isinstance(metrics, RateLimiterMetrics)
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_initial_metrics_are_zero(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_initial_metrics_are_zero(self, engine_name: str, get_factory) -> None:
         """Initial metrics should be zero/empty."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)
@@ -50,9 +46,7 @@ class TestMetricsTracking:
         assert metrics.timeouts == 0
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_total_acquisitions_increments(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_total_acquisitions_increments(self, engine_name: str, get_factory) -> None:
         """total_acquisitions should increment on each acquire."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=100.0)
@@ -75,9 +69,7 @@ class TestMetricsTracking:
         assert metrics.timeouts >= 1
 
     @pytest.mark.parametrize("engine_name", CONCURRENCY_UNIT_ENGINES)
-    async def test_current_concurrent_tracked(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_current_concurrent_tracked(self, engine_name: str, get_factory) -> None:
         """current_concurrent should track active operations."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=5)
@@ -96,9 +88,7 @@ class TestMetricsTracking:
         await limiter.release()
 
     @pytest.mark.parametrize("engine_name", CONCURRENCY_UNIT_ENGINES)
-    async def test_total_releases_tracked(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_total_releases_tracked(self, engine_name: str, get_factory) -> None:
         """total_releases should increment on each release."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=5)
@@ -111,9 +101,7 @@ class TestMetricsTracking:
             assert metrics.total_releases == i + 1
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_last_acquisition_at_updated(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_last_acquisition_at_updated(self, engine_name: str, get_factory) -> None:
         """last_acquisition_at should update on acquire."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=100.0)
@@ -128,9 +116,7 @@ class TestMetricsTracking:
         assert metrics_after.last_acquisition_at > 0
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_metrics_are_independent_per_limiter(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_metrics_are_independent_per_limiter(self, engine_name: str, get_factory) -> None:
         """Each limiter should have independent metrics."""
         factory: EngineFactory = get_factory(engine_name)
         limiter1 = await factory(rate_per_second=100.0)
@@ -147,9 +133,7 @@ class TestMetricsTracking:
         assert metrics2.total_acquisitions == 1
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_avg_wait_time_calculated_correctly(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_avg_wait_time_calculated_correctly(self, engine_name: str, get_factory) -> None:
         """avg_wait_time_ms should be total_wait_time / total_acquisitions."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)  # 0.1s interval
@@ -182,9 +166,7 @@ class TestMetricsTracking:
         assert metrics.max_wait_time_ms >= metrics.avg_wait_time_ms - 1  # 1ms tolerance
 
     @pytest.mark.parametrize("engine_name", CONCURRENCY_UNIT_ENGINES)
-    async def test_max_concurrent_reached_tracked(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_max_concurrent_reached_tracked(self, engine_name: str, get_factory) -> None:
         """max_concurrent_reached should increment when limit is hit."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=1)
@@ -215,9 +197,9 @@ class TestMetricsTracking:
 
         metrics = limiter.get_metrics()
         # Should have accumulated some wait time (at least 2 waits of ~0.2s = ~400ms)
-        assert metrics.total_wait_time_ms >= 200, (
-            f"Expected accumulated wait time >= 200ms, got {metrics.total_wait_time_ms}ms"
-        )
+        assert (
+            metrics.total_wait_time_ms >= 200
+        ), f"Expected accumulated wait time >= 200ms, got {metrics.total_wait_time_ms}ms"
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
     async def test_try_acquire_success_does_not_increment_timeouts(

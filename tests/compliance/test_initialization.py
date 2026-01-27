@@ -22,9 +22,7 @@ class TestInitialization:
     """Test engine initialization compliance."""
 
     @pytest.mark.parametrize("engine_name", get_unit_test_engines())
-    async def test_initialize_is_idempotent(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_initialize_is_idempotent(self, engine_name: str, get_factory) -> None:
         """initialize() can be called multiple times without error."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)
@@ -36,9 +34,7 @@ class TestInitialization:
         assert limiter.is_initialized is True
 
     @pytest.mark.parametrize("engine_name", get_unit_test_engines())
-    async def test_is_initialized_false_before_init(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_is_initialized_false_before_init(self, engine_name: str, get_factory) -> None:
         """is_initialized returns False before initialize() is called."""
         # Only test memory engine directly (others need connection)
         if engine_name != "memory":
@@ -84,9 +80,7 @@ class TestInitialization:
             await limiter.try_acquire(timeout=0)
 
     @pytest.mark.parametrize("engine_name", get_unit_test_engines())
-    async def test_group_id_is_accessible(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_group_id_is_accessible(self, engine_name: str, get_factory) -> None:
         """group_id property returns the configured value."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(group_id="my_test_group", rate_per_second=10.0)
@@ -94,9 +88,7 @@ class TestInitialization:
         assert limiter.group_id == "my_test_group"
 
     @pytest.mark.parametrize("engine_name", get_unit_test_engines())
-    async def test_default_timeout_property(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_default_timeout_property(self, engine_name: str, get_factory) -> None:
         """default_timeout property returns the configured value."""
         factory: EngineFactory = get_factory(engine_name)
 
@@ -109,9 +101,7 @@ class TestInitialization:
         assert limiter2.default_timeout is None
 
     @pytest.mark.parametrize("engine_name", get_unit_test_engines())
-    async def test_fail_closed_property(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_fail_closed_property(self, engine_name: str, get_factory) -> None:
         """fail_closed property returns the configured value."""
         factory: EngineFactory = get_factory(engine_name)
 
@@ -139,9 +129,7 @@ class TestInitialization:
             await limiter.release()
 
     @pytest.mark.parametrize("engine_name", get_unit_test_engines())
-    async def test_no_config_raises_error(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_no_config_raises_error(self, engine_name: str, get_factory) -> None:
         """Creating limiter without any configuration should raise ValueError."""
         if engine_name != "memory":
             pytest.skip("Direct instantiation only for memory engine")
@@ -153,4 +141,3 @@ class TestInitialization:
 
         # Should mention the required parameters
         assert "rate_per_second" in str(exc_info.value) or "limit" in str(exc_info.value)
-

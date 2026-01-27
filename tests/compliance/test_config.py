@@ -23,9 +23,7 @@ class TestConfigIntrospection:
     """Test configuration introspection compliance."""
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_get_config_returns_correct_type(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_get_config_returns_correct_type(self, engine_name: str, get_factory) -> None:
         """get_config() returns LimiterReadOnlyConfig."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)
@@ -34,9 +32,7 @@ class TestConfigIntrospection:
         assert isinstance(config, LimiterReadOnlyConfig)
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_config_reflects_rate_per_second(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_config_reflects_rate_per_second(self, engine_name: str, get_factory) -> None:
         """get_config() reflects rate_per_second setting."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=42.5)
@@ -45,9 +41,7 @@ class TestConfigIntrospection:
         assert config.rate_per_second == 42.5
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_config_reflects_max_concurrent(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_config_reflects_max_concurrent(self, engine_name: str, get_factory) -> None:
         """get_config() reflects max_concurrent setting."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=7)
@@ -56,9 +50,7 @@ class TestConfigIntrospection:
         assert config.max_concurrent == 7
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_config_reflects_sliding_window(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_config_reflects_sliding_window(self, engine_name: str, get_factory) -> None:
         """get_config() reflects sliding window settings."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(limit=100, window_seconds=300)
@@ -68,9 +60,7 @@ class TestConfigIntrospection:
         assert config.window_seconds == 300
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_config_algorithm_token_bucket(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_config_algorithm_token_bucket(self, engine_name: str, get_factory) -> None:
         """get_config() shows token_bucket algorithm."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)
@@ -79,9 +69,7 @@ class TestConfigIntrospection:
         assert config.algorithm == "token_bucket"
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_config_algorithm_sliding_window(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_config_algorithm_sliding_window(self, engine_name: str, get_factory) -> None:
         """get_config() shows sliding_window algorithm."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(limit=10, window_seconds=60)
@@ -90,9 +78,7 @@ class TestConfigIntrospection:
         assert config.algorithm == "sliding_window"
 
     @pytest.mark.parametrize("engine_name", UNIT_ENGINES)
-    async def test_config_includes_group_id(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_config_includes_group_id(self, engine_name: str, get_factory) -> None:
         """get_config() includes the limiter ID/group_id."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(group_id="my_limiter", rate_per_second=10.0)

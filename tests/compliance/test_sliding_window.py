@@ -46,9 +46,7 @@ class TestSlidingWindowRateLimiting:
         assert result is False, "Request beyond limit should fail"
 
     @pytest.mark.parametrize("engine_name", SLIDING_WINDOW_UNIT_ENGINES)
-    async def test_window_resets_after_expiry(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_window_resets_after_expiry(self, engine_name: str, get_factory) -> None:
         """After window expires, new requests should be allowed."""
         factory: EngineFactory = get_factory(engine_name)
         limit = 3
@@ -71,9 +69,7 @@ class TestSlidingWindowRateLimiting:
         assert result is True, "Should succeed after window expires"
 
     @pytest.mark.parametrize("engine_name", SLIDING_WINDOW_UNIT_ENGINES)
-    async def test_acquire_blocks_until_slot_available(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_acquire_blocks_until_slot_available(self, engine_name: str, get_factory) -> None:
         """acquire() blocks when limit reached until slot opens."""
         factory: EngineFactory = get_factory(engine_name)
         limit = 2
@@ -100,9 +96,7 @@ class TestSlidingWindowRateLimiting:
         assert limiter.limit == 42
 
     @pytest.mark.parametrize("engine_name", SLIDING_WINDOW_UNIT_ENGINES)
-    async def test_window_seconds_property(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_window_seconds_property(self, engine_name: str, get_factory) -> None:
         """window_seconds property returns configured value."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(limit=10, window_seconds=300)
@@ -118,9 +112,7 @@ class TestSlidingWindowRateLimiting:
         assert limiter.algorithm == "sliding_window"
 
     @pytest.mark.parametrize("engine_name", SLIDING_WINDOW_UNIT_ENGINES)
-    async def test_limit_without_window_raises_error(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_limit_without_window_raises_error(self, engine_name: str, get_factory) -> None:
         """limit without window_seconds should raise ValueError."""
         if engine_name != "memory":
             pytest.skip("Direct instantiation only for memory engine")
@@ -130,14 +122,13 @@ class TestSlidingWindowRateLimiting:
         with pytest.raises(ValueError) as exc_info:
             MemoryRateLimiter(group_id="test", limit=10)
 
-        assert "window_seconds" in str(exc_info.value).lower() or "limit" in str(
-            exc_info.value
-        ).lower()
+        assert (
+            "window_seconds" in str(exc_info.value).lower()
+            or "limit" in str(exc_info.value).lower()
+        )
 
     @pytest.mark.parametrize("engine_name", SLIDING_WINDOW_UNIT_ENGINES)
-    async def test_window_without_limit_raises_error(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_window_without_limit_raises_error(self, engine_name: str, get_factory) -> None:
         """window_seconds without limit should raise ValueError."""
         if engine_name != "memory":
             pytest.skip("Direct instantiation only for memory engine")
@@ -147,14 +138,13 @@ class TestSlidingWindowRateLimiting:
         with pytest.raises(ValueError) as exc_info:
             MemoryRateLimiter(group_id="test", window_seconds=60)
 
-        assert "window_seconds" in str(exc_info.value).lower() or "limit" in str(
-            exc_info.value
-        ).lower()
+        assert (
+            "window_seconds" in str(exc_info.value).lower()
+            or "limit" in str(exc_info.value).lower()
+        )
 
     @pytest.mark.parametrize("engine_name", SLIDING_WINDOW_UNIT_ENGINES)
-    async def test_zero_limit_raises_error(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_zero_limit_raises_error(self, engine_name: str, get_factory) -> None:
         """Zero limit should raise ValueError."""
         if engine_name != "memory":
             pytest.skip("Direct instantiation only for memory engine")
@@ -165,9 +155,7 @@ class TestSlidingWindowRateLimiting:
             MemoryRateLimiter(group_id="test", limit=0, window_seconds=60)
 
     @pytest.mark.parametrize("engine_name", SLIDING_WINDOW_UNIT_ENGINES)
-    async def test_negative_limit_raises_error(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_negative_limit_raises_error(self, engine_name: str, get_factory) -> None:
         """Negative limit should raise ValueError."""
         if engine_name != "memory":
             pytest.skip("Direct instantiation only for memory engine")
@@ -178,9 +166,7 @@ class TestSlidingWindowRateLimiting:
             MemoryRateLimiter(group_id="test", limit=-1, window_seconds=60)
 
     @pytest.mark.parametrize("engine_name", SLIDING_WINDOW_UNIT_ENGINES)
-    async def test_zero_window_seconds_raises_error(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_zero_window_seconds_raises_error(self, engine_name: str, get_factory) -> None:
         """Zero window_seconds should raise ValueError."""
         if engine_name != "memory":
             pytest.skip("Direct instantiation only for memory engine")

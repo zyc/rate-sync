@@ -28,9 +28,7 @@ class TestTokenBucketRateLimiting:
     """Test token bucket algorithm compliance."""
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
-    async def test_first_acquire_is_immediate(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_first_acquire_is_immediate(self, engine_name: str, get_factory) -> None:
         """First acquire should return immediately."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)
@@ -59,14 +57,11 @@ class TestTokenBucketRateLimiting:
         expected_interval = 1.0 / rate
         # Allow 20% tolerance
         assert elapsed >= expected_interval * 0.8, (
-            f"Second acquire waited {elapsed:.3f}s, "
-            f"expected >= {expected_interval * 0.8:.3f}s"
+            f"Second acquire waited {elapsed:.3f}s, " f"expected >= {expected_interval * 0.8:.3f}s"
         )
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
-    async def test_try_acquire_immediate_success(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_try_acquire_immediate_success(self, engine_name: str, get_factory) -> None:
         """try_acquire(timeout=0) returns True if slot available."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)
@@ -75,9 +70,7 @@ class TestTokenBucketRateLimiting:
         assert result is True
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
-    async def test_try_acquire_immediate_failure(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_try_acquire_immediate_failure(self, engine_name: str, get_factory) -> None:
         """try_acquire(timeout=0) returns False if no slot available."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=1.0)  # 1 per second
@@ -91,9 +84,7 @@ class TestTokenBucketRateLimiting:
         assert result2 is False
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
-    async def test_try_acquire_with_timeout_success(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_try_acquire_with_timeout_success(self, engine_name: str, get_factory) -> None:
         """try_acquire waits up to timeout for slot."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)  # 0.1s interval
@@ -105,9 +96,7 @@ class TestTokenBucketRateLimiting:
         assert result is True
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
-    async def test_try_acquire_with_timeout_failure(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_try_acquire_with_timeout_failure(self, engine_name: str, get_factory) -> None:
         """try_acquire returns False when timeout exceeded."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=1.0)  # 1s interval
@@ -122,9 +111,7 @@ class TestTokenBucketRateLimiting:
         assert 0.08 <= elapsed <= 0.25  # Respected timeout with tolerance
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
-    async def test_rate_per_second_property(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_rate_per_second_property(self, engine_name: str, get_factory) -> None:
         """rate_per_second property returns configured value."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=42.5)
@@ -132,9 +119,7 @@ class TestTokenBucketRateLimiting:
         assert limiter.rate_per_second == 42.5
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
-    async def test_negative_rate_raises_error(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_negative_rate_raises_error(self, engine_name: str, get_factory) -> None:
         """Negative rate_per_second should raise ValueError."""
         if engine_name != "memory":
             pytest.skip("Direct instantiation only for memory engine")
@@ -147,9 +132,7 @@ class TestTokenBucketRateLimiting:
         assert "rate_per_second" in str(exc_info.value)
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
-    async def test_zero_rate_raises_error(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_zero_rate_raises_error(self, engine_name: str, get_factory) -> None:
         """Zero rate_per_second should raise ValueError."""
         if engine_name != "memory":
             pytest.skip("Direct instantiation only for memory engine")
@@ -162,9 +145,7 @@ class TestTokenBucketRateLimiting:
         assert "rate_per_second" in str(exc_info.value)
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
-    async def test_algorithm_property_token_bucket(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_algorithm_property_token_bucket(self, engine_name: str, get_factory) -> None:
         """algorithm property returns 'token_bucket' for rate_per_second config."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(rate_per_second=10.0)
@@ -172,9 +153,7 @@ class TestTokenBucketRateLimiting:
         assert limiter.algorithm == "token_bucket"
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
-    async def test_algorithm_with_only_max_concurrent(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_algorithm_with_only_max_concurrent(self, engine_name: str, get_factory) -> None:
         """algorithm defaults to 'token_bucket' when only max_concurrent is set."""
         factory: EngineFactory = get_factory(engine_name)
         limiter = await factory(max_concurrent=5)
@@ -183,9 +162,7 @@ class TestTokenBucketRateLimiting:
         assert limiter.algorithm == "token_bucket"
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
-    async def test_rate_and_window_mutual_exclusion(
-        self, engine_name: str, get_factory
-    ) -> None:
+    async def test_rate_and_window_mutual_exclusion(self, engine_name: str, get_factory) -> None:
         """Cannot specify both rate_per_second and sliding window params."""
         if engine_name != "memory":
             pytest.skip("Direct instantiation only for memory engine")
@@ -201,7 +178,10 @@ class TestTokenBucketRateLimiting:
             )
 
         # Should mention the conflict
-        assert "token_bucket" in str(exc_info.value).lower() or "sliding_window" in str(exc_info.value).lower()
+        assert (
+            "token_bucket" in str(exc_info.value).lower()
+            or "sliding_window" in str(exc_info.value).lower()
+        )
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
     async def test_rate_timing_accuracy(self, engine_name: str, get_factory) -> None:
@@ -221,12 +201,12 @@ class TestTokenBucketRateLimiting:
 
         # All intervals should be close to expected (within 30% tolerance)
         for i, interval in enumerate(intervals):
-            assert interval >= expected_interval * 0.7, (
-                f"Interval {i+1}: {interval:.3f}s < expected {expected_interval * 0.7:.3f}s"
-            )
-            assert interval <= expected_interval * 1.5, (
-                f"Interval {i+1}: {interval:.3f}s > expected {expected_interval * 1.5:.3f}s"
-            )
+            assert (
+                interval >= expected_interval * 0.7
+            ), f"Interval {i+1}: {interval:.3f}s < expected {expected_interval * 0.7:.3f}s"
+            assert (
+                interval <= expected_interval * 1.5
+            ), f"Interval {i+1}: {interval:.3f}s > expected {expected_interval * 1.5:.3f}s"
 
     @pytest.mark.parametrize("engine_name", TOKEN_BUCKET_UNIT_ENGINES)
     async def test_try_acquire_with_small_timeout_times_out(
