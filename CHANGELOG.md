@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-01-27
+
+### Changed
+- README: add "What It Solves" section with real-world problem scenarios and deep-dive links
+- README: add missing pattern doc links (Abuse Prevention, Monitoring, Testing)
+
 ## [0.2.0] - 2025-01-27
 
 ### Added
