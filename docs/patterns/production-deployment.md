@@ -7,21 +7,21 @@ Deploy rate-sync with Redis for distributed rate limiting.
 ```toml
 # rate-sync.toml
 [stores.redis]
-strategy = "redis"
+engine = "redis"
 url = "${REDIS_URL}"
-max_connections = 50
-socket_timeout = 5
+pool_max_size = 50
+socket_timeout = 5.0
 
 # Public endpoints: fail-open
 [limiters.public]
-store_id = "redis"
+store = "redis"
 algorithm = "token_bucket"
 rate_per_second = 100.0
 fail_closed = false
 
 # Auth endpoints: fail-closed (security)
 [limiters.auth]
-store_id = "redis"
+store = "redis"
 algorithm = "sliding_window"
 limit = 10
 window_seconds = 300
@@ -71,6 +71,9 @@ async def health():
 ## Circuit Breaker
 
 ```python
+import time
+from ratesync import get_or_clone_limiter
+
 class RateLimiterCircuitBreaker:
     def __init__(self, threshold: int = 5, timeout: int = 60):
         self.threshold = threshold
@@ -143,10 +146,13 @@ volumes:
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | High latency | Redis far away | Move Redis closer |
-| Connection exhausted | Too many connections | Reduce `max_connections` |
+| Connection exhausted | Too many connections | Reduce `pool_max_size` |
 | Limits not working | Multiple Redis instances | Use single cluster |
 
 ## See Also
 
-- [Testing](./testing.md)
-- [Monitoring](./monitoring.md)
+- [Gradual Rollout](./gradual-rollout.md) — Safely introducing limits to production
+- [Graceful Degradation](./graceful-degradation.md) — Handling overload in production
+- [Burst Tuning Guide](./burst-tuning.md) — Capacity planning
+- [Testing](./testing.md) — Testing before deployment
+- [Monitoring](./monitoring.md) — Post-deployment observability

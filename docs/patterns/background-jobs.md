@@ -9,18 +9,18 @@ Respect external service quotas.
 ```toml
 # rate-sync.toml
 [limiters.github_api]
-store_id = "redis"
+store = "redis"
 algorithm = "sliding_window"
 limit = 5000
 window_seconds = 3600
 
 [limiters.stripe_api]
-store_id = "redis"
+store = "redis"
 algorithm = "token_bucket"
 rate_per_second = 100.0
 
 [limiters.openai_api]
-store_id = "redis"
+store = "redis"
 algorithm = "sliding_window"
 limit = 60
 window_seconds = 60
@@ -42,6 +42,9 @@ async def call_github_api(data: dict):
 Control throughput without blocking.
 
 ```python
+import asyncio
+from ratesync import get_or_clone_limiter
+
 async def process_queue(queue_name: str, limiter_id: str):
     limiter = await get_or_clone_limiter(limiter_id, f"queue:{queue_name}")
     semaphore = asyncio.Semaphore(10)  # Max 10 concurrent
@@ -92,6 +95,9 @@ async def process_batch(items: list, limiter_id: str):
 ## Retry with Backoff
 
 ```python
+import asyncio
+from ratesync import get_or_clone_limiter
+
 async def retry_with_backoff(operation, limiter_id: str, max_retries: int = 5):
     limiter = await get_or_clone_limiter(limiter_id, "retry")
 
@@ -125,7 +131,9 @@ async def process_order(order_id: str):
 ## Celery Integration
 
 ```python
+import asyncio
 from celery import Celery
+from ratesync import get_or_clone_limiter
 
 app = Celery('tasks')
 
@@ -161,5 +169,8 @@ stripe_limiter = await get_or_clone_limiter("stripe_api", "worker")
 
 ## See Also
 
-- [Production Deployment](./production-deployment.md)
-- [Monitoring](./monitoring.md)
+- [Webhook Delivery](./webhook-delivery.md) — Outbound delivery rate limiting
+- [File Uploads & Heavy Resources](./file-uploads.md) — Concurrency limits for expensive tasks
+- [Burst Tuning Guide](./burst-tuning.md) — Choosing timeouts and rates for workers
+- [Production Deployment](./production-deployment.md) — Infrastructure setup
+- [Monitoring](./monitoring.md) — Worker observability

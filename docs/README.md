@@ -32,8 +32,11 @@ Distributed rate limiting for Python with declarative configuration.
 ### 1. Install
 
 ```bash
-pip install rate-sync[redis]  # Production
-pip install rate-sync          # Development (memory only)
+pip install rate-sync               # Development (memory only)
+pip install rate-sync[redis]        # Production (Redis backend)
+pip install rate-sync[fastapi]      # FastAPI integration
+pip install rate-sync[redis,fastapi] # Production + FastAPI
+pip install rate-sync[all]          # All backends + integrations
 ```
 
 ### 2. Configure
@@ -123,5 +126,5 @@ window_seconds = 300  # 5 attempts per 5 min
 
 ## Support
 
-- [GitHub Issues](https://github.com/rate-sync/rate-sync/issues)
-- [GitHub Discussions](https://github.com/rate-sync/rate-sync/discussions)
+- [GitHub Issues](https://github.com/rate-sync/python/issues)
+- [GitHub Discussions](https://github.com/rate-sync/python/discussions)

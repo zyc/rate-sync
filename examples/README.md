@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-pip install rate-sync[redis] fastapi uvicorn
+pip install rate-sync[redis,fastapi] uvicorn
 docker run -d -p 6379:6379 redis:7-alpine
 python multi_tenant_complete.py
 ```
@@ -13,6 +13,7 @@ python multi_tenant_complete.py
 | File | Description |
 |------|-------------|
 | `multi_tenant_complete.py` | Full multi-tenant FastAPI app with tier-based limiting |
+| `metrics_alert.py` | Simple monitoring loop with threshold-based alerts |
 | `rate-sync.toml` | Example configuration with free/pro/enterprise tiers |
 | `FLOW_DIAGRAM.md` | Visual flow diagrams for rate limiting |
 

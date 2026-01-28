@@ -5,6 +5,7 @@ Observability for rate limiting with metrics, logging, and alerting.
 ## Prometheus Metrics
 
 ```python
+import time
 from prometheus_client import Counter, Histogram
 
 checks_total = Counter(
@@ -131,6 +132,7 @@ async def debug_state(limiter_id: str, identifier: str):
 
 2. **Sample success logs** - Reduce noise
    ```python
+   import random
    if random.random() < 0.01:  # 1% sample
        log.info("rate_limit_passed")
    ```
@@ -142,5 +144,8 @@ async def debug_state(limiter_id: str, identifier: str):
 
 ## See Also
 
-- [Production Deployment](./production-deployment.md)
-- [Testing](./testing.md)
+- [Gradual Rollout](./gradual-rollout.md) — Monitoring during rollout
+- [Graceful Degradation](./graceful-degradation.md) — Acting on monitoring signals
+- [Burst Tuning Guide](./burst-tuning.md) — Adjusting limits based on metrics
+- [Production Deployment](./production-deployment.md) — Infrastructure health checks
+- [Testing](./testing.md) — Testing rate-limited code

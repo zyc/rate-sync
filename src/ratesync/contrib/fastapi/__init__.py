@@ -7,9 +7,7 @@ Installation:
     The FastAPI integration requires FastAPI/Starlette to be installed.
     ratesync itself is framework-agnostic and doesn't require FastAPI.
 
-    pip install fastapi
-    # or
-    pip install starlette
+    pip install rate-sync[fastapi]
 
 Quick Start:
     >>> from fastapi import Depends, FastAPI
@@ -82,13 +80,13 @@ Configuration:
     Rate limiters should be configured in rate-sync.toml:
 
     [limiters.api]
-    store_id = "redis"
+    store = "redis"
     algorithm = "sliding_window"
     limit = 100
     window_seconds = 60
 
     [limiters.user_api]
-    store_id = "redis"
+    store = "redis"
     algorithm = "sliding_window"
     limit = 300
     window_seconds = 60

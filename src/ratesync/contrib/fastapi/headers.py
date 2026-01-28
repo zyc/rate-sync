@@ -112,7 +112,7 @@ def set_rate_limit_headers(
         '99'
     """
     if not FASTAPI_AVAILABLE:
-        raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install fastapi")
+        raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install rate-sync[fastapi]")
 
     response.headers["X-RateLimit-Limit"] = str(result.limit)
     response.headers["X-RateLimit-Remaining"] = str(result.remaining)

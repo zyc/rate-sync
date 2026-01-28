@@ -4,7 +4,7 @@
 
 Configure [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (one-time):
 1. Go to https://pypi.org/manage/account/publishing/
-2. Add pending publisher: `rate-sync`, owner `zyc`, repo `rate-sync`, workflow `publish.yml`, environment `pypi`
+2. Add pending publisher: `rate-sync`, owner `rate-sync`, repo `python`, workflow `publish.yml`, environment `pypi`
 
 ## Release Checklist
 

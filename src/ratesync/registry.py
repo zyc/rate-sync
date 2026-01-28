@@ -385,6 +385,7 @@ class RateLimiterRegistry:
             algorithm,
             limit,
             window_seconds,
+            fail_closed,
         )
 
         return limiter
@@ -636,6 +637,7 @@ def configure_limiter(
     algorithm: str = "token_bucket",
     limit: int | None = None,
     window_seconds: int | None = None,
+    fail_closed: bool = False,
 ) -> None:
     """Configure a rate limiter in the global registry.
 
@@ -652,6 +654,8 @@ def configure_limiter(
         algorithm: "token_bucket" or "sliding_window"
         limit: Max requests in window (sliding_window only)
         window_seconds: Window size in seconds (sliding_window only)
+        fail_closed: If True, blocks requests when backend fails. If False
+            (default), allows requests when backend fails (fail-open).
 
     Example:
         >>> # Token bucket: Rate limiting only
@@ -678,6 +682,7 @@ def configure_limiter(
         algorithm,
         limit,
         window_seconds,
+        fail_closed,
     )
 
 

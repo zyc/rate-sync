@@ -1,5 +1,7 @@
 # Abuse Prevention
 
+> **Requires:** `pip install rate-sync[fastapi]` for FastAPI examples below.
+
 Advanced patterns beyond basic rate limiting for detecting and blocking attacks.
 
 ## Account Enumeration Prevention
@@ -8,22 +10,35 @@ Attackers probe registration/login to discover valid accounts.
 
 ```toml
 [limiters.register_ip]
-store_id = "redis"
+store = "redis"
 algorithm = "sliding_window"
 limit = 3
 window_seconds = 3600
 
 [limiters.register_global]
-store_id = "redis"
+store = "redis"
 algorithm = "sliding_window"
 limit = 100
 window_seconds = 60
 ```
 
 ```python
+from ratesync import get_or_clone_limiter
+from ratesync.contrib.fastapi import get_client_ip
+
 @app.post("/register")
 async def register(request: Request, email: str, password: str):
-    await check_composite_limit(request, "register_ip", "register_global")
+    client_ip = get_client_ip(request)
+
+    # Per-IP registration limit
+    ip_limiter = await get_or_clone_limiter("register_ip", client_ip)
+    if not await ip_limiter.try_acquire(timeout=0):
+        raise HTTPException(429, "Too many requests")
+
+    # Global registration limit
+    global_limiter = await get_or_clone_limiter("register_global", "all")
+    if not await global_limiter.try_acquire(timeout=0):
+        raise HTTPException(429, "Service busy, please try again later")
 
     user = await db.get_user_by_email(email)
     # IMPORTANT: Same response whether email exists or not
@@ -36,25 +51,36 @@ Multi-layer protection with progressive delay.
 
 ```toml
 [limiters.login_ip]
+store = "redis"
+algorithm = "sliding_window"
 limit = 10
 window_seconds = 300
 
 [limiters.login_credential]
+store = "redis"
+algorithm = "sliding_window"
 limit = 5
 window_seconds = 900
 
 [limiters.login_failed]
+store = "redis"
+algorithm = "sliding_window"
 limit = 3
 window_seconds = 1800
 ```
 
 ```python
+import asyncio
+from ratesync import hash_identifier, get_or_clone_limiter
+from ratesync.contrib.fastapi import get_client_ip
+
 async def progressive_delay(failed_count: int):
     delays = {1: 0, 2: 1, 3: 2, 4: 5, 5: 10}
     await asyncio.sleep(delays.get(failed_count, 30))
 
 @app.post("/login")
 async def login(request: Request, email: str, password: str):
+    client_ip = get_client_ip(request)
     email_hash = hash_identifier(email)
 
     # Check failed attempts and apply delay
@@ -63,7 +89,13 @@ async def login(request: Request, email: str, password: str):
     await progressive_delay(state.current_usage)
 
     # Check rate limits
-    await check_composite_limit(request, email, "login_ip", "login_credential")
+    ip_limiter = await get_or_clone_limiter("login_ip", client_ip)
+    if not await ip_limiter.try_acquire(timeout=0):
+        raise HTTPException(429, "Too many requests")
+
+    cred_limiter = await get_or_clone_limiter("login_credential", f"{client_ip}:{email_hash}")
+    if not await cred_limiter.try_acquire(timeout=0):
+        raise HTTPException(429, "Too many login attempts")
 
     user = await authenticate(email, password)
     if not user:
@@ -79,13 +111,18 @@ Different limits based on operation cost.
 
 ```toml
 [limiters.api_read]
+store = "redis"
 rate_per_second = 100.0
 
 [limiters.api_write]
+store = "redis"
+algorithm = "sliding_window"
 limit = 100
 window_seconds = 60
 
 [limiters.api_export]
+store = "redis"
+algorithm = "sliding_window"
 limit = 5
 window_seconds = 86400
 ```
@@ -148,10 +185,14 @@ Global velocity limiting catches botnet attacks.
 
 ```toml
 [limiters.global_login]
+store = "redis"
+algorithm = "sliding_window"
 limit = 1000
 window_seconds = 60
 
 [limiters.global_failed]
+store = "redis"
+algorithm = "sliding_window"
 limit = 100
 window_seconds = 60
 ```
@@ -171,5 +212,6 @@ async def check_global_velocity(success: bool):
 
 ## See Also
 
-- [Authentication Protection](./authentication-protection.md)
-- [Monitoring](./monitoring.md)
+- [Authentication Protection](./authentication-protection.md) — Multi-layer auth defense
+- [Graceful Degradation](./graceful-degradation.md) — Priority shedding under attack
+- [Monitoring](./monitoring.md) — Detecting abuse patterns

@@ -1,7 +1,7 @@
 """
-Exemplo Completo: Multi-Tenant Rate Limiting com rate-sync
+Complete Example: Multi-Tenant Rate Limiting with rate-sync
 
-Este exemplo mostra EXATAMENTE como implementar rate limiting por tenant tier.
+This example shows EXACTLY how to implement rate limiting per tenant tier.
 """
 
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -10,10 +10,10 @@ from ratesync import acquire, clone_limiter, get_limiter, rate_limited
 app = FastAPI()
 
 # ==============================================================================
-# PASSO 1: Armazenar tier do tenant (normalmente em database)
+# STEP 1: Store tenant tier (typically in a database)
 # ==============================================================================
 
-# Exemplo simplificado - em produção seria PostgreSQL/Redis
+# Simplified example — in production this would be PostgreSQL/Redis
 TENANT_TIERS = {
     "tenant-acme": "free-tier",
     "tenant-globex": "pro-tier",
@@ -21,10 +21,10 @@ TENANT_TIERS = {
 }
 
 
-# Ou buscar de database
+# Or fetch from database
 async def get_tenant_tier_from_db(tenant_id: str) -> str:
     """
-    Em produção, faria:
+    In production, you would do:
 
     async with db.pool.acquire() as conn:
         result = await conn.fetchrow(
@@ -32,23 +32,23 @@ async def get_tenant_tier_from_db(tenant_id: str) -> str:
         )
         return result['tier']
     """
-    # Simplificado para exemplo
+    # Simplified for this example
     tier = TENANT_TIERS.get(tenant_id, "free-tier")  # Default: free
     return tier
 
 
 # ==============================================================================
-# PASSO 2: Extrair tenant_id da request (Header, JWT, API Key, etc)
+# STEP 2: Extract tenant_id from request (Header, JWT, API Key, etc.)
 # ==============================================================================
 
 
 async def get_tenant_id(x_tenant_id: str = Header(...)) -> str:
     """
-    Extrai tenant_id do header X-Tenant-ID.
+    Extract tenant_id from X-Tenant-ID header.
 
-    Alternativas em produção:
-    - JWT token: decode token, extrair claim 'tenant_id'
-    - API Key: lookup API key em database, pegar tenant_id
+    Production alternatives:
+    - JWT token: decode token, extract 'tenant_id' claim
+    - API Key: look up API key in database, get tenant_id
     - Subdomain: request.url.hostname.split('.')[0]
     """
     if not x_tenant_id:
@@ -57,7 +57,7 @@ async def get_tenant_id(x_tenant_id: str = Header(...)) -> str:
 
 
 # ==============================================================================
-# ABORDAGEM 1: Lambda com lookup dinâmico
+# APPROACH 1: Lambda with dynamic lookup
 # ==============================================================================
 
 
@@ -65,47 +65,47 @@ async def get_tenant_id(x_tenant_id: str = Header(...)) -> str:
 @rate_limited(lambda tenant_id: TENANT_TIERS.get(tenant_id, "free-tier"))
 async def create_data_v1(data: dict, tenant_id: str = Depends(get_tenant_id)):
     """
-    Como funciona:
-    1. FastAPI executa get_tenant_id() → retorna "tenant-acme"
-    2. Lambda executa: TENANT_TIERS.get("tenant-acme", "free-tier") → "free-tier"
-    3. rate_limited usa limiter "free-tier" do TOML
-    4. Aplica rate_per_second=0.16, max_concurrent=2
+    How it works:
+    1. FastAPI executes get_tenant_id() -> returns "tenant-acme"
+    2. Lambda executes: TENANT_TIERS.get("tenant-acme", "free-tier") -> "free-tier"
+    3. rate_limited uses the "free-tier" limiter from TOML
+    4. Applies rate_per_second=0.16, max_concurrent=2
     """
     return {"tenant": tenant_id, "data": data, "status": "created"}
 
 
 # ==============================================================================
-# ABORDAGEM 2: Lambda com async lookup (database)
+# APPROACH 2: Lambda with async lookup (database)
 # ==============================================================================
 
-# IMPORTANTE: Lambda NÃO pode ser async, então fazemos lookup antes
+# IMPORTANT: Lambda CANNOT be async, so we perform the lookup beforehand
 
 
 async def get_tenant_tier(tenant_id: str) -> str:
-    """Dependency que faz lookup assíncrono."""
+    """Dependency that performs async lookup."""
     return await get_tenant_tier_from_db(tenant_id)
 
 
 @app.post("/api/v2/data")
-@rate_limited(lambda tier: tier)  # Lambda recebe tier diretamente
+@rate_limited(lambda tier: tier)  # Lambda receives tier directly
 async def create_data_v2(
     data: dict,
     tenant_id: str = Depends(get_tenant_id),
-    tier: str = Depends(get_tenant_tier),  # Lookup async ANTES do lambda
+    tier: str = Depends(get_tenant_tier),  # Async lookup BEFORE the lambda
 ):
     """
-    Como funciona:
-    1. FastAPI executa get_tenant_id() → "tenant-globex"
-    2. FastAPI executa get_tenant_tier("tenant-globex") → "pro-tier"
-    3. Lambda executa: tier → "pro-tier"
-    4. rate_limited usa limiter "pro-tier" do TOML
-    5. Aplica rate_per_second=1.66, max_concurrent=20
+    How it works:
+    1. FastAPI executes get_tenant_id() -> "tenant-globex"
+    2. FastAPI executes get_tenant_tier("tenant-globex") -> "pro-tier"
+    3. Lambda executes: tier -> "pro-tier"
+    4. rate_limited uses the "pro-tier" limiter from TOML
+    5. Applies rate_per_second=1.66, max_concurrent=20
     """
     return {"tenant": tenant_id, "tier": tier, "data": data}
 
 
 # ==============================================================================
-# ABORDAGEM 3: Construir limiter_id manualmente (mais explícito)
+# APPROACH 3: Build limiter_id manually (more explicit)
 # ==============================================================================
 
 
@@ -115,41 +115,41 @@ async def create_data_v3(
     tenant_id: str = Depends(get_tenant_id),
 ):
     """
-    Abordagem mais explícita - sem lambda.
+    More explicit approach — no lambda.
     """
-    # 1. Determinar tier
+    # 1. Determine tier
     tier = await get_tenant_tier_from_db(tenant_id)
 
-    # 2. Construir limiter_id manualmente
-    limiter_id = tier  # "free-tier", "pro-tier", ou "enterprise-tier"
+    # 2. Build limiter_id manually
+    limiter_id = tier  # "free-tier", "pro-tier", or "enterprise-tier"
 
-    # 3. Aplicar rate limiting
+    # 3. Apply rate limiting
     async with acquire(limiter_id):
-        # Rate + Concurrency limitados por tier
+        # Rate + concurrency limited by tier
         return {"tenant": tenant_id, "tier": tier, "data": data}
 
 
 # ==============================================================================
-# ABORDAGEM 4: Clone limiter por tenant individual (mais granular)
+# APPROACH 4: Clone limiter per individual tenant (most granular)
 # ==============================================================================
 
 
 async def ensure_tenant_limiter(tenant_id: str) -> str:
     """
-    Cria limiter específico para o tenant baseado no tier dele.
+    Create a limiter specific to the tenant based on their tier.
 
-    Vantagens:
-    - Metrics por tenant (não só por tier)
-    - Pode ajustar limites individualmente
+    Advantages:
+    - Per-tenant metrics (not just per tier)
+    - Can adjust limits individually
     """
     tier = await get_tenant_tier_from_db(tenant_id)
     limiter_id = f"tenant-{tenant_id}"
 
-    # Clone base tier limiter para este tenant específico
-    # (idempotente - se já existe, não faz nada)
+    # Clone the base tier limiter for this specific tenant
+    # (idempotent — does nothing if it already exists)
     clone_limiter(
-        source_id=tier,  # "free-tier", "pro-tier", etc
-        new_id=limiter_id,  # "tenant-acme", "tenant-globex", etc
+        source_id=tier,  # "free-tier", "pro-tier", etc.
+        new_id=limiter_id,  # "tenant-acme", "tenant-globex", etc.
     )
 
     return limiter_id
@@ -161,12 +161,12 @@ async def create_data_v4(
     tenant_id: str = Depends(get_tenant_id),
 ):
     """
-    Limiter POR TENANT (não por tier).
+    Limiter PER TENANT (not per tier).
 
-    Vantagens:
-    - Metrics individuais por tenant (billing!)
-    - Pode ajustar limites específicos
-    - Melhor visibilidade
+    Advantages:
+    - Individual per-tenant metrics (useful for billing)
+    - Can adjust limits per tenant
+    - Better visibility
     """
     limiter_id = await ensure_tenant_limiter(tenant_id)
 
@@ -175,51 +175,51 @@ async def create_data_v4(
 
 
 # ==============================================================================
-# EXEMPLO DE USO: Cliente fazendo requests
+# USAGE EXAMPLE: Client making requests
 # ==============================================================================
 
 """
-# Cliente Free Tier (tenant-acme)
+# Free Tier client (tenant-acme)
 curl -X POST http://localhost:8000/api/v1/data \
   -H "X-Tenant-ID: tenant-acme" \
   -H "Content-Type: application/json" \
   -d '{"message": "hello"}'
 
-# Como funciona:
+# How it works:
 # 1. Header X-Tenant-ID = "tenant-acme"
 # 2. Lookup: TENANT_TIERS["tenant-acme"] = "free-tier"
-# 3. rate-sync aplica limites do free-tier:
+# 3. rate-sync applies free-tier limits:
 #    - rate_per_second = 0.16 (~10/min)
 #    - max_concurrent = 2
-# 4. Se exceder: HTTP 429 Too Many Requests
+# 4. If exceeded: HTTP 429 Too Many Requests
 
 
-# Cliente Pro Tier (tenant-globex)
+# Pro Tier client (tenant-globex)
 curl -X POST http://localhost:8000/api/v1/data \
   -H "X-Tenant-ID: tenant-globex" \
   -H "Content-Type: application/json" \
   -d '{"message": "hello"}'
 
-# Como funciona:
+# How it works:
 # 1. Header X-Tenant-ID = "tenant-globex"
 # 2. Lookup: TENANT_TIERS["tenant-globex"] = "pro-tier"
-# 3. rate-sync aplica limites do pro-tier:
+# 3. rate-sync applies pro-tier limits:
 #    - rate_per_second = 1.66 (~100/min)
 #    - max_concurrent = 20
-# 4. Muito mais throughput que free tier!
+# 4. Much more throughput than the free tier!
 """
 
 
 # ==============================================================================
-# TRACKING METRICS POR TENANT (para billing)
+# TRACKING PER-TENANT METRICS (for billing)
 # ==============================================================================
 
 
 @app.get("/admin/tenant/{tenant_id}/metrics")
 async def get_tenant_metrics(tenant_id: str):
     """
-    Endpoint admin para ver usage de um tenant.
-    Útil para billing, alertas, análises.
+    Admin endpoint to view a tenant's usage.
+    Useful for billing, alerts, and analytics.
     """
     limiter_id = f"tenant-{tenant_id}"
 
@@ -242,11 +242,11 @@ async def get_tenant_metrics(tenant_id: str):
 
 
 # ==============================================================================
-# COMPARAÇÃO: Como seria com `limits` (concorrente)
+# COMPARISON: How it would look with `limits` (competitor)
 # ==============================================================================
 
 """
-COM LIMITS (manual, boilerplate):
+WITH LIMITS (manual, boilerplate):
 
 from limits import parse, MovingWindowRateLimiter
 from limits.storage import RedisStorage
@@ -265,30 +265,30 @@ async def create_data(
     data: dict,
     x_tenant_id: str = Header(...)
 ):
-    # 🔴 Lookup manual de tier
+    # Manual tier lookup
     tier = TENANT_TIERS.get(x_tenant_id, "free-tier")
 
-    # 🔴 Construir namespace manualmente
+    # Build namespace manually
     namespace = f"tenant:{x_tenant_id}"
 
-    # 🔴 Parse limit
+    # Parse limit
     limit = TIER_LIMITS[tier]
 
-    # 🔴 Check manual
+    # Manual check
     if not limiter.hit(limit, namespace):
         raise HTTPException(429, "Rate limit exceeded")
 
-    # 🔴 PROBLEMA: Não tem concurrency limiting!
-    # 🔴 Se 100 requests simultâneas chegarem, todas passam
-    # 🔴 Backend pode morrer mesmo com rate limit
+    # PROBLEM: No concurrency limiting!
+    # If 100 simultaneous requests arrive, they all pass
+    # Backend can die even with rate limit
 
-    # 🔴 Metrics? DIY manual
-    # 🔴 Billing integration? Custom code
+    # Metrics? DIY
+    # Billing integration? Custom code
 
     return {"data": data}
 
 
-COM RATE-SYNC (declarativo, elegante):
+WITH RATE-SYNC (declarative, elegant):
 
 @app.post("/api/data")
 @rate_limited(lambda tenant_id: TENANT_TIERS.get(tenant_id, "free-tier"))
@@ -296,10 +296,10 @@ async def create_data(
     data: dict,
     tenant_id: str = Depends(get_tenant_id)
 ):
-    # ✅ Rate limiting automático
-    # ✅ Concurrency limiting automático
-    # ✅ Metrics automáticos
-    # ✅ 3 linhas vs 20+
+    # Automatic rate limiting
+    # Automatic concurrency limiting
+    # Automatic metrics
+    # 3 lines vs 20+
     return {"data": data}
 """
 

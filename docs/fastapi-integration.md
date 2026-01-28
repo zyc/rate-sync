@@ -2,6 +2,18 @@
 
 rate-sync provides seamless FastAPI integration via dependencies, middleware, and exception handlers.
 
+## Installation
+
+The FastAPI integration is an optional extra. Install it with:
+
+```bash
+pip install rate-sync[fastapi]           # FastAPI only
+pip install rate-sync[redis,fastapi]     # Redis + FastAPI (recommended for production)
+pip install rate-sync[all]               # All backends + integrations
+```
+
+This installs `fastapi` and `starlette` as dependencies. If you try to use `ratesync.contrib.fastapi` without the extra installed, you'll get a clear `RuntimeError` explaining what to install.
+
 ## Complete Working Example
 
 ```python

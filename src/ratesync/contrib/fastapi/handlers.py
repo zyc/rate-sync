@@ -150,7 +150,7 @@ async def rate_limit_exception_handler(
         ... )
     """
     if not FASTAPI_AVAILABLE:
-        raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install fastapi")
+        raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install rate-sync[fastapi]")
 
     # Get headers from result
     result = exc.to_result()
@@ -218,7 +218,7 @@ def create_rate_limit_response(
         >>> response = create_rate_limit_response(result)
     """
     if not FASTAPI_AVAILABLE:
-        raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install fastapi")
+        raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install rate-sync[fastapi]")
 
     headers = get_rate_limit_headers(result)
 

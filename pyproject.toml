@@ -21,11 +21,11 @@ requires-python = ">=3.12,<4.0"
 version = "0.2.2"
 
 [project.urls]
-Changelog = "https://github.com/rate-sync/rate-sync/blob/main/CHANGELOG.md"
-Documentation = "https://github.com/rate-sync/rate-sync#readme"
-Homepage = "https://github.com/rate-sync/rate-sync"
-Issues = "https://github.com/rate-sync/rate-sync/issues"
-Repository = "https://github.com/rate-sync/rate-sync"
+Changelog = "https://github.com/rate-sync/python/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/rate-sync/python#readme"
+Homepage = "https://github.com/rate-sync/python"
+Issues = "https://github.com/rate-sync/python/issues"
+Repository = "https://github.com/rate-sync/python"
 
 [tool.poetry]
 packages = [{include = "ratesync", from = "src"}]
@@ -38,10 +38,15 @@ tomli = "^2.0.0"
 asyncpg = {version = "^0.30.0", optional = true}
 redis = {version = "^5.0.0", extras = ["asyncio"], optional = true}
 
+# Optional dependencies for framework integrations
+fastapi = {version = ">=0.100.0", optional = true}
+starlette = {version = ">=0.27.0", optional = true}
+
 [tool.poetry.extras]
-all = ["asyncpg", "redis"]
+all = ["asyncpg", "redis", "fastapi", "starlette"]
 postgres = ["asyncpg"]
 redis = ["redis"]
+fastapi = ["fastapi", "starlette"]
 
 [tool.poetry.group.dev.dependencies]
 # For development, install all engines

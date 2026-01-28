@@ -1,5 +1,7 @@
 # Authentication Protection
 
+> **Requires:** `pip install rate-sync[fastapi]` for FastAPI examples below.
+
 Protect auth endpoints against brute force, credential stuffing, and account enumeration using composite rate limiting.
 
 ## Configuration
@@ -7,19 +9,19 @@ Protect auth endpoints against brute force, credential stuffing, and account enu
 ```toml
 # rate-sync.toml
 [stores.redis]
-strategy = "redis"
+engine = "redis"
 url = "${REDIS_URL}"
 
 # Layer 1: IP-based (stops scanning)
 [limiters.auth_ip]
-store_id = "redis"
+store = "redis"
 algorithm = "sliding_window"
 limit = 30
 window_seconds = 60
 
 # Layer 2: Credential-based (stops brute force)
 [limiters.auth_credential]
-store_id = "redis"
+store = "redis"
 algorithm = "sliding_window"
 limit = 5
 window_seconds = 300
@@ -28,9 +30,10 @@ window_seconds = 300
 ## Implementation
 
 ```python
+import time
 from fastapi import Depends, FastAPI, Request
 from ratesync import hash_identifier
-from ratesync.composite import CompositeRateLimiter
+from ratesync import CompositeRateLimiter
 from ratesync.contrib.fastapi import RateLimitExceededError, get_client_ip
 
 app = FastAPI()
@@ -74,10 +77,14 @@ async def login(request: Request, email: str, password: str):
 
 ```toml
 [limiters.reset_ip]
+store = "redis"
+algorithm = "sliding_window"
 limit = 5
 window_seconds = 600
 
 [limiters.reset_email]
+store = "redis"
+algorithm = "sliding_window"
 limit = 3
 window_seconds = 3600
 ```
@@ -86,6 +93,8 @@ window_seconds = 3600
 
 ```toml
 [limiters.register_ip]
+store = "redis"
+algorithm = "sliding_window"
 limit = 3
 window_seconds = 3600
 ```
@@ -102,5 +111,6 @@ Attacker using one IP? Blocked by IP layer.
 
 ## See Also
 
-- [Abuse Prevention](./abuse-prevention.md)
-- [Testing](./testing.md)
+- [Abuse Prevention](./abuse-prevention.md) — Progressive blocking and attack detection
+- [Gradual Rollout](./gradual-rollout.md) — Safely deploying auth rate limits
+- [Testing](./testing.md) — Testing composite limiters

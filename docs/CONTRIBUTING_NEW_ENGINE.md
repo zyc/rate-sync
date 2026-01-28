@@ -354,4 +354,4 @@ Reference these PRs for implementation patterns:
 
 ## Questions?
 
-Open a [Discussion](https://github.com/rate-sync/rate-sync/discussions) or [Issue](https://github.com/rate-sync/rate-sync/issues).
+Open a [Discussion](https://github.com/rate-sync/python/discussions) or [Issue](https://github.com/rate-sync/python/issues).

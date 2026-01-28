@@ -161,7 +161,7 @@ class RateLimitMiddleware:
                 IP extraction.
         """
         if not FASTAPI_AVAILABLE:
-            raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install fastapi")
+            raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install rate-sync[fastapi]")
 
         self.app = app
         self.limiter_id = limiter_id

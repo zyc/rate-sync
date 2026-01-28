@@ -206,7 +206,7 @@ class CompositeRateLimitDependency:
             ValueError: If limiters dict is empty.
         """
         if not FASTAPI_AVAILABLE:
-            raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install fastapi")
+            raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install rate-sync[fastapi]")
 
         self.composite = CompositeRateLimiter(limiters, strategy)
         self.identifier_extractor = identifier_extractor

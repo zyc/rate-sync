@@ -135,6 +135,87 @@ clone_limiter("api", "api:premium", rate_per_second=500.0)
 
 ---
 
+### get_or_clone_limiter
+
+Get or create a cloned limiter for per-identifier rate limiting. Returns a limiter with ID `{base_limiter_id}:{unique_id}`. Creates a clone on first call, reuses on subsequent calls.
+
+```python
+async def get_or_clone_limiter(base_limiter_id: str, unique_id: str) -> RateLimiter
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `base_limiter_id` | `str` | Source limiter to clone from |
+| `unique_id` | `str` | Unique identifier (user ID, IP, tenant, etc.) |
+
+**Raises:** `LimiterNotFoundError`
+
+```python
+from ratesync import get_or_clone_limiter
+
+# Per-user rate limiting
+limiter = await get_or_clone_limiter("api", user_id)
+allowed = await limiter.try_acquire(timeout=0)
+
+# Per-tenant rate limiting
+limiter = await get_or_clone_limiter("tenant_api", tenant_id)
+async with limiter.acquire_context(timeout=30.0):
+    await process_request()
+```
+
+---
+
+### check_limiter
+
+Check a rate limit without necessarily consuming a slot.
+
+```python
+async def check_limiter(
+    limiter_id: str,
+    acquire_if_allowed: bool = True,
+    timeout: float = 0,
+) -> RateLimitResult
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limiter_id` | `str` | Required | Limiter to check |
+| `acquire_if_allowed` | `bool` | `True` | Consume slot if allowed |
+| `timeout` | `float` | `0` | Timeout in seconds |
+
+```python
+from ratesync import check_limiter
+
+result = await check_limiter("api")
+if result.allowed:
+    # Process request
+    pass
+```
+
+---
+
+### check_multi_limiters
+
+Check multiple rate limits at once (e.g., IP limit + user limit).
+
+```python
+async def check_multi_limiters(
+    limiter_ids: list[str],
+    acquire_if_allowed: bool = True,
+    timeout: float = 0,
+) -> MultiLimiterResult
+```
+
+```python
+from ratesync import check_multi_limiters
+
+result = await check_multi_limiters(["api_ip", "api_user"])
+if not result.allowed:
+    print(f"Blocked by: {result.blocking_limiter_id}")
+```
+
+---
+
 ### load_config
 
 Load configuration from TOML file.
@@ -330,10 +411,12 @@ Observability metrics dataclass.
 | `total_wait_time_ms` | `float` | Accumulated wait time |
 | `avg_wait_time_ms` | `float` | Average wait time |
 | `max_wait_time_ms` | `float` | Maximum wait time |
+| `cas_failures` | `int` | CAS failures |
 | `timeouts` | `int` | Timeout count |
+| `last_acquisition_at` | `float \| None` | Timestamp of last acquisition |
 | `current_concurrent` | `int` | Current in-flight |
 | `max_concurrent_reached` | `int` | Times limit was hit |
-| `cas_failures` | `int` | CAS failures |
+| `total_releases` | `int` | Total concurrent slot releases |
 
 ```python
 metrics = get_limiter("api").get_metrics()
@@ -379,6 +462,77 @@ if state.remaining < 3:
 
 ---
 
+### CompositeRateLimiter
+
+Apply multiple rate limiters with configurable strategies.
+
+```python
+from ratesync import CompositeRateLimiter
+
+class CompositeRateLimiter:
+    def __init__(
+        self,
+        limiters: dict[str, str],       # {check_name: limiter_id}
+        strategy: StrategyType = "most_restrictive",
+    )
+
+    async def check(
+        self,
+        identifiers: dict[str, str],    # {check_name: identifier}
+        timeout: float | None = None,
+    ) -> CompositeLimitCheck
+```
+
+**Strategies:**
+
+| Strategy | Behavior |
+|----------|----------|
+| `"most_restrictive"` | All must pass, reports most restrictive |
+| `"all_must_pass"` | All must pass, fails on first failure |
+| `"any_must_pass"` | At least one must allow |
+
+**CompositeLimitCheck fields:** `allowed`, `results` (dict), `most_restrictive` (RateLimitResult), `triggered_by` (str | None)
+
+```python
+composite = CompositeRateLimiter(
+    limiters={"ip": "auth_ip", "credential": "auth_credential"},
+    strategy="most_restrictive",
+)
+
+result = await composite.check(
+    identifiers={"ip": client_ip, "credential": email_hash},
+)
+if not result.allowed:
+    print(f"Blocked by: {result.triggered_by}")
+```
+
+---
+
+## Utilities
+
+### hash_identifier
+
+Hash a PII identifier for safe logging and storage.
+
+```python
+from ratesync import hash_identifier
+
+hashed = hash_identifier("user@example.com")
+# → deterministic SHA-256 hash
+```
+
+### combine_identifiers
+
+Combine multiple identifiers into a single key.
+
+```python
+from ratesync import combine_identifiers
+
+key = combine_identifiers(client_ip, email_hash)
+```
+
+---
+
 ## Exceptions
 
 | Exception | Description | Attributes |
@@ -393,6 +547,8 @@ if state.remaining < 3:
 ---
 
 ## FastAPI Integration
+
+> **Requires:** `pip install rate-sync[fastapi]`
 
 Import from `ratesync.contrib.fastapi`:
 
@@ -455,11 +611,11 @@ app.add_middleware(
 ```python
 class RateLimitExceededError(Exception):
     identifier: str
-    limiter_id: str
     limit: int
     remaining: int
-    reset_at: float | None
-    retry_after: float | None
+    reset_at: int
+    retry_after: int
+    limiter_id: str | None  # optional
 ```
 
 ---

@@ -160,7 +160,7 @@ def get_client_ip(
         >>> get_client_ip(request, trusted_proxies=["10.0.0.0/8"])
     """
     if not FASTAPI_AVAILABLE:
-        raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install fastapi")
+        raise RuntimeError("FastAPI/Starlette not installed. Install with: pip install rate-sync[fastapi]")
 
     # Determine trusted proxy networks
     # Priority: parameter > config > defaults

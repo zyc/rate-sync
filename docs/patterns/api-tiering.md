@@ -1,5 +1,7 @@
 # API Tiering
 
+> **Requires:** `pip install rate-sync[fastapi]` for FastAPI examples below.
+
 Different rate limits for different user tiers (free, pro, enterprise).
 
 ## Configuration
@@ -7,23 +9,23 @@ Different rate limits for different user tiers (free, pro, enterprise).
 ```toml
 # rate-sync.toml
 [stores.redis]
-strategy = "redis"
+engine = "redis"
 url = "${REDIS_URL}"
 
 [limiters.api_free]
-store_id = "redis"
+store = "redis"
 algorithm = "sliding_window"
 limit = 100
 window_seconds = 3600
 
 [limiters.api_pro]
-store_id = "redis"
+store = "redis"
 algorithm = "sliding_window"
 limit = 1000
 window_seconds = 3600
 
 [limiters.api_enterprise]
-store_id = "redis"
+store = "redis"
 algorithm = "sliding_window"
 limit = 10000
 window_seconds = 3600
@@ -32,6 +34,7 @@ window_seconds = 3600
 ## Implementation
 
 ```python
+import time
 from fastapi import Depends, Header, HTTPException
 from ratesync import get_or_clone_limiter
 from ratesync.contrib.fastapi import RateLimitExceededError
@@ -68,16 +71,22 @@ async def get_data(_: None = Depends(rate_limit_by_tier)):
 ```toml
 # Generous for reads
 [limiters.read_free]
+store = "redis"
+algorithm = "sliding_window"
 limit = 1000
 window_seconds = 3600
 
 # Strict for writes
 [limiters.write_free]
+store = "redis"
+algorithm = "sliding_window"
 limit = 100
 window_seconds = 3600
 
 # Very strict for exports
 [limiters.export_free]
+store = "redis"
+algorithm = "sliding_window"
 limit = 10
 window_seconds = 86400
 ```
@@ -114,5 +123,7 @@ async def rate_limit_with_headers(response: Response, api_key: str, tier: str):
 
 ## See Also
 
-- [Authentication Protection](./authentication-protection.md)
-- [Monitoring](./monitoring.md)
+- [Multi-Tenant Fairness](./multi-tenant-fairness.md) — Per-tenant resource isolation
+- [Burst Tuning Guide](./burst-tuning.md) — Choosing the right limits per tier
+- [Authentication Protection](./authentication-protection.md) — Protecting auth endpoints
+- [Monitoring](./monitoring.md) — Per-tier observability

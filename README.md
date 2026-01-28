@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/rate-sync/rate-sync/main/docs/assets/logo.png" alt="rate-sync" width="200">
+  <img src="https://raw.githubusercontent.com/rate-sync/python/main/docs/assets/logo.png" alt="rate-sync" width="200">
 </p>
 
 <h1 align="center">rate-sync</h1>
@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/rate-sync/"><img src="https://img.shields.io/pypi/v/rate-sync.svg" alt="PyPI version"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
-  <a href="https://github.com/rate-sync/rate-sync/actions"><img src="https://img.shields.io/github/actions/workflow/status/rate-sync/rate-sync/test.yml?branch=main&label=tests" alt="Tests"></a>
+  <a href="https://github.com/rate-sync/python/actions"><img src="https://img.shields.io/github/actions/workflow/status/rate-sync/python/test.yml?branch=main&label=tests" alt="Tests"></a>
 </p>
 
 <p align="center">Distributed rate limiting for Python with Redis, PostgreSQL, or in-memory backends.</p>
@@ -23,12 +23,13 @@ Attackers try thousands of password combinations. A sliding window limiter on yo
 
 ```toml
 [limiters.auth_credential]
+store = "redis"
 algorithm = "sliding_window"
 limit = 5                # 5 attempts
 window_seconds = 300     # per 5 minutes
 ```
 
-> **Deep dive:** [Authentication Protection](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/authentication-protection.md) &middot; [Abuse Prevention](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/abuse-prevention.md)
+> **Deep dive:** [Authentication Protection](https://github.com/rate-sync/python/blob/main/docs/patterns/authentication-protection.md) &middot; [Abuse Prevention](https://github.com/rate-sync/python/blob/main/docs/patterns/abuse-prevention.md)
 
 ### Different API quotas for free, pro, and enterprise customers
 
@@ -38,7 +39,44 @@ Your free tier gets 100 requests/hour. Pro gets 1,000. Enterprise gets 10,000. D
 limiter = await get_or_clone_limiter(f"api_{tier}", api_key)
 ```
 
-> **Deep dive:** [API Tiering](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/api-tiering.md)
+> **Deep dive:** [API Tiering](https://github.com/rate-sync/python/blob/main/docs/patterns/api-tiering.md)
+
+### One tenant consuming all your platform's resources
+
+In multi-tenant systems, a single noisy tenant can starve everyone else. Per-tenant rate limiting enforces fair usage — each tenant gets their share, and no one can monopolize your infrastructure.
+
+```python
+# Each tenant gets their own enforced limit
+clone_limiter("platform_api", f"tenant:{tenant_id}")
+await acquire(f"tenant:{tenant_id}")
+```
+
+> **Deep dive:** [Multi-Tenant Fairness](https://github.com/rate-sync/python/blob/main/docs/patterns/multi-tenant-fairness.md)
+
+### Webhook floods taking down your customers' endpoints
+
+Your platform sends webhooks to customer URLs. A bulk import triggers 10,000 events, and suddenly you're DDoS-ing your own customers. Per-endpoint rate limiting with automatic retries keeps delivery smooth without overwhelming anyone.
+
+```python
+limiter = await get_or_clone_limiter("webhook_endpoint", endpoint_url)
+async with limiter.acquire_context(timeout=30.0):
+    await http_client.post(endpoint_url, json=payload)
+```
+
+> **Deep dive:** [Webhook Delivery](https://github.com/rate-sync/python/blob/main/docs/patterns/webhook-delivery.md)
+
+### File uploads and heavy operations eating all your resources
+
+Five concurrent 1GB uploads can exhaust server memory. PDF generation can peg every CPU core. Concurrency limiting caps how many heavy operations run simultaneously — completely separate from request rate.
+
+```toml
+[limiters.upload]
+store = "redis"
+max_concurrent = 10          # max 10 uploads at once
+timeout = 300.0
+```
+
+> **Deep dive:** [File Uploads & Heavy Resources](https://github.com/rate-sync/python/blob/main/docs/patterns/file-uploads.md)
 
 ### Background workers overwhelming third-party APIs
 
@@ -51,7 +89,7 @@ rate_per_second = 90.0   # stay under Stripe's 100/s limit
 max_concurrent = 10       # max 10 in-flight calls
 ```
 
-> **Deep dive:** [Background Jobs](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/background-jobs.md)
+> **Deep dive:** [Background Jobs](https://github.com/rate-sync/python/blob/main/docs/patterns/background-jobs.md)
 
 ### Rate limits that actually work across multiple servers
 
@@ -67,7 +105,7 @@ store = "redis"          # all instances share this
 rate_per_second = 100.0
 ```
 
-> **Deep dive:** [Production Deployment](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/production-deployment.md)
+> **Deep dive:** [Production Deployment](https://github.com/rate-sync/python/blob/main/docs/patterns/production-deployment.md)
 
 ### Knowing what's being blocked and why
 
@@ -75,10 +113,10 @@ Rate limiting without observability is flying blind. rate-sync exposes built-in 
 
 ```python
 state = await limiter.get_state()
-# → RateLimiterState(allowed=True, remaining=42, reset_at=1706367600)
+# → LimiterState(allowed=True, remaining=42, reset_at=1706367600)
 ```
 
-> **Deep dive:** [Observability](https://github.com/rate-sync/rate-sync/blob/main/docs/observability.md) &middot; [Monitoring Patterns](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/monitoring.md)
+> **Deep dive:** [Observability](https://github.com/rate-sync/python/blob/main/docs/observability.md) &middot; [Monitoring Patterns](https://github.com/rate-sync/python/blob/main/docs/patterns/monitoring.md)
 
 ---
 
@@ -94,10 +132,11 @@ state = await limiter.get_state()
 ## Installation
 
 ```bash
-pip install rate-sync           # Memory backend only
-pip install rate-sync[redis]    # + Redis support
-pip install rate-sync[postgres] # + PostgreSQL support
-pip install rate-sync[all]      # All backends
+pip install rate-sync             # Memory backend only
+pip install rate-sync[redis]      # + Redis support
+pip install rate-sync[postgres]   # + PostgreSQL support
+pip install rate-sync[fastapi]    # + FastAPI integration
+pip install rate-sync[all]        # All backends + integrations
 ```
 
 ## Quick Start
@@ -204,6 +243,8 @@ window_seconds = 300   # Per 5 minutes
 
 ## FastAPI Integration
 
+> **Requires:** `pip install rate-sync[fastapi]`
+
 ```python
 from fastapi import Depends, FastAPI
 from ratesync.contrib.fastapi import (
@@ -237,33 +278,39 @@ await acquire("api")
 
 | Topic | Link |
 |-------|------|
-| Configuration Reference | [docs/configuration.md](https://github.com/rate-sync/rate-sync/blob/main/docs/configuration.md) |
-| API Reference | [docs/api-reference.md](https://github.com/rate-sync/rate-sync/blob/main/docs/api-reference.md) |
-| FastAPI Integration | [docs/fastapi-integration.md](https://github.com/rate-sync/rate-sync/blob/main/docs/fastapi-integration.md) |
-| Redis Setup | [docs/setup/redis-setup.md](https://github.com/rate-sync/rate-sync/blob/main/docs/setup/redis-setup.md) |
-| PostgreSQL Setup | [docs/setup/postgres-setup.md](https://github.com/rate-sync/rate-sync/blob/main/docs/setup/postgres-setup.md) |
-| Observability | [docs/observability.md](https://github.com/rate-sync/rate-sync/blob/main/docs/observability.md) |
+| Configuration Reference | [docs/configuration.md](https://github.com/rate-sync/python/blob/main/docs/configuration.md) |
+| API Reference | [docs/api-reference.md](https://github.com/rate-sync/python/blob/main/docs/api-reference.md) |
+| FastAPI Integration | [docs/fastapi-integration.md](https://github.com/rate-sync/python/blob/main/docs/fastapi-integration.md) |
+| Redis Setup | [docs/setup/redis-setup.md](https://github.com/rate-sync/python/blob/main/docs/setup/redis-setup.md) |
+| PostgreSQL Setup | [docs/setup/postgres-setup.md](https://github.com/rate-sync/python/blob/main/docs/setup/postgres-setup.md) |
+| Observability | [docs/observability.md](https://github.com/rate-sync/python/blob/main/docs/observability.md) |
 
 ### Patterns
 
-- [Authentication Protection](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/authentication-protection.md)
-- [Abuse Prevention](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/abuse-prevention.md)
-- [API Tiering](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/api-tiering.md)
-- [Background Jobs](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/background-jobs.md)
-- [Monitoring](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/monitoring.md)
-- [Testing](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/testing.md)
-- [Production Deployment](https://github.com/rate-sync/rate-sync/blob/main/docs/patterns/production-deployment.md)
+- [Authentication Protection](https://github.com/rate-sync/python/blob/main/docs/patterns/authentication-protection.md)
+- [Abuse Prevention](https://github.com/rate-sync/python/blob/main/docs/patterns/abuse-prevention.md)
+- [API Tiering](https://github.com/rate-sync/python/blob/main/docs/patterns/api-tiering.md)
+- [Multi-Tenant Fairness](https://github.com/rate-sync/python/blob/main/docs/patterns/multi-tenant-fairness.md)
+- [Webhook Delivery](https://github.com/rate-sync/python/blob/main/docs/patterns/webhook-delivery.md)
+- [File Uploads & Heavy Resources](https://github.com/rate-sync/python/blob/main/docs/patterns/file-uploads.md)
+- [Graceful Degradation](https://github.com/rate-sync/python/blob/main/docs/patterns/graceful-degradation.md)
+- [Background Jobs](https://github.com/rate-sync/python/blob/main/docs/patterns/background-jobs.md)
+- [Burst Tuning Guide](https://github.com/rate-sync/python/blob/main/docs/patterns/burst-tuning.md)
+- [Gradual Rollout](https://github.com/rate-sync/python/blob/main/docs/patterns/gradual-rollout.md)
+- [Monitoring](https://github.com/rate-sync/python/blob/main/docs/patterns/monitoring.md)
+- [Testing](https://github.com/rate-sync/python/blob/main/docs/patterns/testing.md)
+- [Production Deployment](https://github.com/rate-sync/python/blob/main/docs/patterns/production-deployment.md)
 
 ## Contributing
 
 ```bash
-git clone https://github.com/rate-sync/rate-sync.git
-cd rate-sync
+git clone https://github.com/rate-sync/python.git
+cd python
 poetry install
 poetry run pytest
 ```
 
-See [CONTRIBUTING.md](https://github.com/rate-sync/rate-sync/blob/main/CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](https://github.com/rate-sync/python/blob/main/CONTRIBUTING.md) for guidelines.
 
 ## License
 

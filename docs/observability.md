@@ -47,7 +47,7 @@ def export_metrics():
         TIMEOUT_GAUGE.labels(limiter=limiter_id).set(m.timeouts)
         CONCURRENT_GAUGE.labels(limiter=limiter_id).set(m.current_concurrent)
 
-# FastAPI endpoint
+# FastAPI endpoint (requires: pip install rate-sync[fastapi])
 @app.get("/metrics")
 async def metrics():
     export_metrics()

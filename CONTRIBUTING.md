@@ -5,8 +5,8 @@ Thanks for your interest in contributing! This guide will help you get started.
 ## Quick Start
 
 ```bash
-git clone https://github.com/rate-sync/rate-sync.git
-cd rate-sync
+git clone https://github.com/rate-sync/python.git
+cd python
 poetry install
 poetry run pytest -m "not integration"
 ```
@@ -132,15 +132,15 @@ Before submitting:
 
 ## What to Contribute
 
-- **Good first issues**: Check [issues labeled `good-first-issue`](https://github.com/rate-sync/rate-sync/issues?q=label%3Agood-first-issue)
-- **New engines**: See [Contributing a New Engine](https://github.com/rate-sync/rate-sync/blob/main/docs/CONTRIBUTING_NEW_ENGINE.md)
+- **Good first issues**: Check [issues labeled `good-first-issue`](https://github.com/rate-sync/python/issues?q=label%3Agood-first-issue)
+- **New engines**: See [Contributing a New Engine](https://github.com/rate-sync/python/blob/main/docs/CONTRIBUTING_NEW_ENGINE.md)
 - **Bug fixes**: Always welcome
 - **Documentation**: Improvements and examples
 
 ## Getting Help
 
-- **Questions**: [GitHub Discussions](https://github.com/rate-sync/rate-sync/discussions)
-- **Bugs**: [GitHub Issues](https://github.com/rate-sync/rate-sync/issues)
+- **Questions**: [GitHub Discussions](https://github.com/rate-sync/python/discussions)
+- **Bugs**: [GitHub Issues](https://github.com/rate-sync/python/issues)
 - **Security**: Email security@rate-sync.dev (do not open public issue)
 
 ## Code of Conduct

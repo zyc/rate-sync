@@ -6,7 +6,8 @@ Test rate-limited code without flaky tests or external dependencies.
 
 ```python
 import pytest
-from ratesync import configure_store, configure_limiter, reset_limiter
+from ratesync import configure_store, configure_limiter
+from ratesync.testing import reset_limiter
 
 @pytest.fixture(autouse=True)
 async def setup_limiters():
@@ -64,7 +65,7 @@ async def setup_composite():
 
 @pytest.mark.asyncio
 async def test_composite_triggers_correct_layer():
-    from ratesync.composite import CompositeRateLimiter
+    from ratesync import CompositeRateLimiter
 
     composite = CompositeRateLimiter(
         limiters={"ip": "test_ip", "cred": "test_cred"},
@@ -85,6 +86,8 @@ async def test_composite_triggers_correct_layer():
 ```
 
 ## FastAPI Integration Tests
+
+> **Requires:** `pip install rate-sync[fastapi]`
 
 ```python
 from fastapi.testclient import TestClient
@@ -135,5 +138,7 @@ configure_limiter("test", limit=5, window_seconds=1)
 
 ## See Also
 
-- [Authentication Protection](./authentication-protection.md)
-- [Production Deployment](./production-deployment.md)
+- [Burst Tuning Guide](./burst-tuning.md) — Understanding algorithm differences for tests
+- [Gradual Rollout](./gradual-rollout.md) — Shadow mode before enforcement
+- [Authentication Protection](./authentication-protection.md) — Testing composite limiters
+- [Production Deployment](./production-deployment.md) — Deploying tested code

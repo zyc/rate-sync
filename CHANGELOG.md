@@ -7,10 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- FastAPI optional extra: `pip install rate-sync[fastapi]` now installs FastAPI and Starlette as optional dependencies, consistent with engine extras (`redis`, `postgres`)
+- `all` extra now includes FastAPI/Starlette alongside engine dependencies
+
+### Changed
+- Rename GitHub repository from `rate-sync/rate-sync` to `rate-sync/python` to support multi-language implementations
+- Update all project URLs, badges, documentation links, and clone instructions to new repo path
+- RuntimeError messages in `ratesync.contrib.fastapi` modules now reference `pip install rate-sync[fastapi]` instead of `pip install fastapi`
+- Updated installation docs across README, docs, and examples to reflect the new `fastapi` extra
+
 ## [0.2.2] - 2025-01-27
 
 ### Changed
-- Migrate repository from `zyc/rate-sync` to `rate-sync/rate-sync` organization
+- Migrate repository from `zyc/rate-sync` to `rate-sync/python` organization
 - Update all project URLs, badges, and documentation links to new org
 - Add project logo (PNG, SVG) and social preview banner
 - Add "What It Solves" section to README with real-world use case scenarios

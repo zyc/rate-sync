@@ -22,8 +22,8 @@ Published as **rate-sync** on PyPI. Supports multiple backends: Redis, PostgreSQ
 ## Important Links
 
 - **PyPI**: https://pypi.org/project/rate-sync/
-- **GitHub**: https://github.com/rate-sync/rate-sync
-- **Issues**: https://github.com/rate-sync/rate-sync/issues
+- **GitHub**: https://github.com/rate-sync/python
+- **Issues**: https://github.com/rate-sync/python/issues
 
 ## Python Dependency Management
 
@@ -39,7 +39,7 @@ poetry run pytest       # Run tests
 ## Project Structure
 
 ```
-rate-sync/
+python/                        # repo: rate-sync/python
 ├── src/ratesync/           # Source code
 │   ├── engines/            # Backend implementations
 │   ├── contrib/            # Integrations (FastAPI, Prometheus)
@@ -167,8 +167,8 @@ The project uses GitHub Actions for CI/CD:
 ### Initial Setup
 
 ```bash
-git clone https://github.com/rate-sync/rate-sync.git
-cd rate-sync
+git clone https://github.com/rate-sync/python.git
+cd python
 poetry install
 poetry run pytest
 ```
